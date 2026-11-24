@@ -1,5 +1,8 @@
-# Baut bei jedem Push automatisch eine installierbare Android-App (APK).
-# Die fertige Datei liegt danach unter "Actions" → Lauf auswählen → "Artifacts".
+# Bei jedem Push: prüfen, APK bauen, im Android-Emulator starten und –
+# nur wenn die App dort fehlerfrei startet – als GitHub-Release veröffentlichen.
+#
+# Fester Download-Link (immer die neueste Version):
+#   https://github.com/xKing41/Islam-App/releases/latest/download/islam-app.apk
 name: Android-APK
 
 on:
@@ -49,11 +52,74 @@ jobs:
           CI: 1
       - name: APK kompilieren
         working-directory: android
-        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+        # arm64-v8a für Handys, x86_64 für den Emulator-Test
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,x86_64 --no-daemon
       - name: APK benennen
-        run: cp android/app/build/outputs/apk/release/app-release.apk "islam-app-${{ github.run_number }}.apk"
+        run: |
+          mkdir -p apk
+          cp android/app/build/outputs/apk/release/app-release.apk apk/islam-app.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: islam-app-apk-${{ github.run_number }}
-          path: islam-app-*.apk
-          retention-days: 30
+          name: islam-app-apk
+          path: apk/islam-app.apk
+          retention-days: 14
+
+  smoke:
+    name: Start-Test im Emulator
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: islam-app-apk
+          path: apk
+      - name: KVM aktivieren
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: App im Emulator starten
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash .github/scripts/smoke-test.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: start-test-ergebnis
+          path: smoke/
+          retention-days: 14
+
+  release:
+    name: Download veröffentlichen
+    needs: smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: islam-app-apk
+          path: apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.${{ github.run_number }}
+          name: Islam App 0.1.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: apk/islam-app.apk
+          body: |
+            **Download:** [islam-app.apk](https://github.com/${{ github.repository }}/releases/download/v0.1.${{ github.run_number }}/islam-app.apk)
+
+            Auf dem Handy antippen → herunterladen → öffnen → installieren.
+            Updates einfach drüber installieren – Einstellungen und Lesezeichen bleiben erhalten.
+
+            Immer die neueste Version: https://github.com/${{ github.repository }}/releases/latest/download/islam-app.apk
+
+            Commit: ${{ github.sha }}
