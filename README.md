@@ -8,15 +8,17 @@ Eine persönliche Android-App, die die wichtigsten islamischen Werkzeuge an eine
 |---|---|
 | 🕌 **Gebetszeiten** | Berechnung nach Standort (GPS oder Stadtliste), Methode Diyanet/DITIB als Standard, Countdown zum nächsten Gebet, Feinjustierung pro Gebet |
 | 🔔 **Erinnerungen** | Benachrichtigung zur Gebetszeit mit Azan (2 Aufnahmen + Kurzfassung), optional Vorab-Erinnerung, „Wecker-Modus“ für maximale Zuverlässigkeit |
-| 📖 **Koran** | Arabischer Uthmani-Text (Tanzil) mit Übersetzung (Bubenheim/Elyas bzw. Diyanet), Suren-/Dschuz-Liste, Suche, Lesezeichen, „Weiterlesen“ |
+| 📖 **Koran** | Arabischer Uthmani-Text (Tanzil) mit Übersetzung (Bubenheim/Elyas bzw. Diyanet) und optionaler Umschrift (okunuşu), Suren-/Dschuz-Liste, Suche, Lesezeichen, „Weiterlesen“ |
 | 🎧 **Rezitation** | Vers für Vers mit 8 Rezitatoren (u. a. Alafasy, Husary, Minshawi), Mitlesen mit Hervorhebung, Vers wiederholen, Wiedergabe im Hintergrund |
 | 📜 **Hadithe** | Über 600 (DE) bzw. 2.100 (TR) Hadithe von HadeethEnc mit arabischem Text, Einstufung, Quelle und Erläuterung; Themen, Suche, Favoriten |
 | 🧭 **Qibla** | Kompass mit Kaaba-Richtung, Entfernung, Vibration bei richtiger Ausrichtung |
 | 📿 **Tesbih** | Zähler mit Ziel (33/99/100), Tesbihat nach dem Gebet (33·33·34), Vibration |
+| 🎙️ **Rezitation prüfen** | Du rezitierst, die App hört zu und markiert falsche, ausgelassene und zusätzliche Wörter – Vers für Vers, auch im Auswendig-Modus mit verborgenem Text. Erkennung offline auf dem Handy (Tarteel-Koranmodell). |
+| 🤲 **Dua & Zikr** | Bittgebete aus dem Koran (arabisch, Umschrift, Übersetzung, Audio) und Dua/Zikr aus der Sunnah (HadeethEnc) |
 | 🗓️ **Hijri-Kalender** | Monatsansicht mit Hijri-Daten, Kandil-Nächte und Feiertage mit Countdown |
 | 🌙 **Ramadan** | Imsak- und Iftar-Tabelle für alle Fastentage |
 
-Geplant: Dua & Zikr (Hisnul Muslim), **Rezitation prüfen** (Mikrofon erkennt falsche oder fehlende Wörter), offizielle Diyanet-Zeiten online.
+Geplant: offizielle Diyanet-Zeiten online, genaueres Erkennungsmodell (whisper-base).
 
 ## App aufs Handy bringen
 

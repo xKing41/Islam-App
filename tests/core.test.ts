@@ -122,7 +122,7 @@ describe('Koran-Daten', () => {
     let total = 0;
     for (const s of SURAS) {
       const data = JSON.parse(readFileSync(join(dir, `${String(s.index).padStart(3, '0')}.json`), 'utf8'));
-      for (const key of ['ar', 'arClean', 'de_bubenheim', 'tr_diyanet', 'tr_vakfi']) {
+      for (const key of ['ar', 'arClean', 'arSimple', 'de_bubenheim', 'tr_diyanet', 'tr_vakfi', 'translit_tr', 'translit_en']) {
         assert.equal(data[key].length, s.ayas, `Sure ${s.index} ${key}`);
         for (const v of data[key]) assert.ok(typeof v === 'string' && v.length > 0, `leerer Vers in ${s.index} ${key}`);
       }

@@ -7,13 +7,17 @@
  * Eingaben (unverändert von den Originalquellen heruntergeladen, siehe QUELLEN.md):
  *   data/sources/tanzil/quran-uthmani.txt        Tanzil, Uthmani-Text (Medina-Mushaf, Hafs)
  *   data/sources/tanzil/quran-simple-clean.txt   Tanzil, Text ohne Diakritika (für Suche/Prüfmodus)
+ *   data/sources/tanzil/quran-simple.txt         Tanzil, einfacher Text mit Diakritika, ohne Pausenzeichen
+ *                                                (gleiche Wörter wie simple-clean – für die Anzeige im Prüfmodus)
  *   data/sources/tanzil/quran-data.xml           Tanzil, Metadaten (Suren, Dschuz, Sadschda ...)
  *   data/sources/tanzil/tr.diyanet.txt           Tanzil, Diyanet İşleri (Türkisch)
+ *   data/sources/tanzil/tr.transliteration.txt   Tanzil, Çeviriyazı (Muhammet Abay) – türkische Umschrift
+ *   data/sources/tanzil/en.transliteration.txt   Tanzil, Transliteration – lateinische Umschrift (mit <u>/<b>-Markierungen)
  *   data/sources/quranenc/german_bubenheim.sqlite  QuranEnc, Bubenheim & Elyas (Deutsch)
  *   data/sources/quranenc/turkish_shahin.sqlite    QuranEnc, Ali Özek u. a. / Diyanet Vakfı (Türkisch)
  *
  * Ausgaben:
- *   src/data/quran/suras/NNN.json   je Sure: { ar, arClean, de_bubenheim, tr_diyanet, tr_vakfi }
+ *   src/data/quran/suras/NNN.json   je Sure: { ar, arClean, de_bubenheim, tr_diyanet, tr_vakfi, translit_tr, translit_en }
  *   src/data/quran/index.ts         Lazy-Loader für die 114 Dateien
  *   src/data/quran/meta.json        Metadaten (Suren, Dschuz, Sadschda-Stellen)
  *
@@ -88,7 +92,10 @@ if (suras.reduce((n, s) => n + s.ayas, 0) !== TOTAL_AYAT) throw new Error('Versa
 const editions = {
   ar: readTanzil(src('tanzil', 'quran-uthmani.txt')),
   arClean: readTanzil(src('tanzil', 'quran-simple-clean.txt')),
+  arSimple: readTanzil(src('tanzil', 'quran-simple.txt')),
   tr_diyanet: readTanzil(src('tanzil', 'tr.diyanet.txt')),
+  translit_tr: readTanzil(src('tanzil', 'tr.transliteration.txt')),
+  translit_en: readTanzil(src('tanzil', 'en.transliteration.txt')),
 };
 const quranEnc = {
   de_bubenheim: readQuranEnc(src('quranenc', 'german_bubenheim.sqlite')),
@@ -104,13 +111,16 @@ mkdirSync(join(outDir, 'suras'), { recursive: true });
 const pad = (n) => String(n).padStart(3, '0');
 let written = 0;
 for (const s of suras) {
-  const data = { ar: [], arClean: [], de_bubenheim: [], tr_diyanet: [], tr_vakfi: [], footnotes: {} };
+  const data = { ar: [], arClean: [], arSimple: [], de_bubenheim: [], tr_diyanet: [], tr_vakfi: [], translit_tr: [], translit_en: [], footnotes: {} };
   for (let a = 1; a <= s.ayas; a++) {
     const k = `${s.index}:${a}`;
-    for (const key of ['ar', 'arClean', 'tr_diyanet']) {
+    for (const key of ['ar', 'arClean', 'arSimple', 'tr_diyanet', 'translit_tr', 'translit_en']) {
       const v = editions[key].get(k);
       if (!v) throw new Error(`${key} fehlt ${k}`);
       data[key].push(v);
+    }
+    if (data.arSimple[a - 1].split(' ').length !== data.arClean[a - 1].split(' ').length) {
+      throw new Error(`Wortanzahl simple/clean unterschiedlich in ${k}`);
     }
     for (const key of ['de_bubenheim', 'tr_vakfi']) {
       const v = quranEnc[key].get(k);
@@ -148,8 +158,11 @@ ${loaders}
 const sources = [
   'tanzil/quran-uthmani.txt',
   'tanzil/quran-simple-clean.txt',
+  'tanzil/quran-simple.txt',
   'tanzil/quran-data.xml',
   'tanzil/tr.diyanet.txt',
+  'tanzil/tr.transliteration.txt',
+  'tanzil/en.transliteration.txt',
   'quranenc/german_bubenheim.sqlite',
   'quranenc/turkish_shahin.sqlite',
 ];

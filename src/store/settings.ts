@@ -36,6 +36,7 @@ export type SettingsState = {
   translationDe: TranslationDe;
   translationTr: TranslationTr;
   showTranslation: boolean;
+  showTransliteration: boolean;
   arabicFontSize: number;
   translationFontSize: number;
   reciter: string;
@@ -72,6 +73,7 @@ export const defaultSettings: SettingsState = {
   translationDe: 'de_bubenheim',
   translationTr: 'tr_diyanet',
   showTranslation: true,
+  showTransliteration: false,
   arabicFontSize: 28,
   translationFontSize: 16,
   reciter: 'Alafasy_128kbps',

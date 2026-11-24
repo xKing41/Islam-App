@@ -94,6 +94,8 @@ export default function RootLayout() {
         <Stack.Screen name="prayer-settings" options={{ title: t.prayerSettings.title }} />
         <Stack.Screen name="location" options={{ title: t.location.title }} />
         <Stack.Screen name="sources" options={{ title: t.sources.title }} />
+        <Stack.Screen name="duas" options={{ title: t.duas.title }} />
+        <Stack.Screen name="recite" options={{ title: t.recite.title }} />
       </Stack>
     </ThemeProvider>
   );

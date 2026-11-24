@@ -6,6 +6,7 @@ import { ActivityIndicator, FlatList, type ListViewToken, Pressable, Share, Styl
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NumberBadge } from '@/components/ayah-badge';
+import { Transliteration } from '@/components/transliteration';
 import { AppText, Button, Icon } from '@/components/ui';
 import { Fonts, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -18,7 +19,7 @@ import { useQuranPlayer } from '@/lib/quran/use-quran-player';
 import { useQuranStore } from '@/store/quran';
 import { useSettings } from '@/store/settings';
 
-type AyahRow = { aya: number; arabic: string; translation: string };
+type AyahRow = { aya: number; arabic: string; translation: string; translit: string };
 
 export default function SuraReader() {
   const params = useLocalSearchParams<{ id: string; aya?: string }>();
@@ -30,6 +31,7 @@ export default function SuraReader() {
   const lang = useSettings((s) => s.language);
   const translationKey = useSettings((s) => (s.language === 'tr' ? s.translationTr : s.translationDe));
   const showTranslation = useSettings((s) => s.showTranslation);
+  const showTranslit = useSettings((s) => s.showTransliteration);
   const arabicSize = useSettings((s) => s.arabicFontSize);
   const translationSize = useSettings((s) => s.translationFontSize);
   const reciterId = useSettings((s) => s.reciter);
@@ -50,8 +52,9 @@ export default function SuraReader() {
         aya: i + 1,
         arabic: splitBasmala(sura, i + 1, ar).rest,
         translation: data[translationKey][i],
+        translit: lang === 'tr' ? data.translit_tr[i] : data.translit_en[i],
       })),
-    [data, sura, translationKey]
+    [data, sura, translationKey, lang]
   );
   const basmala = splitBasmala(sura, 1, data.ar[0]).basmala;
 
@@ -117,6 +120,8 @@ export default function SuraReader() {
         arabicSize={arabicSize}
         translationSize={translationSize}
         showTranslation={showTranslation}
+        showTranslit={showTranslit}
+        lang={lang}
         playing={player.state.currentAya === item.aya}
         bookmarked={bookmarked.has(item.aya)}
         selected={selected === item.aya}
@@ -127,9 +132,14 @@ export default function SuraReader() {
           player.playFrom(item.aya);
         }}
         onShare={() => share(item)}
+        onCheck={() => {
+          setSelected(null);
+          player.stop();
+          router.push({ pathname: '/recite', params: { sura, aya: item.aya } });
+        }}
       />
     ),
-    [sura, arabicSize, translationSize, showTranslation, player, bookmarked, selected, toggleBookmark, share]
+    [sura, arabicSize, translationSize, showTranslation, showTranslit, lang, player, bookmarked, selected, toggleBookmark, share]
   );
 
   const header = (
@@ -226,6 +236,8 @@ const AyahItem = memo(function AyahItem({
   arabicSize,
   translationSize,
   showTranslation,
+  showTranslit,
+  lang,
   playing,
   bookmarked,
   selected,
@@ -233,12 +245,15 @@ const AyahItem = memo(function AyahItem({
   onBookmark,
   onPlay,
   onShare,
+  onCheck,
 }: {
   row: AyahRow;
   sura: number;
   arabicSize: number;
   translationSize: number;
   showTranslation: boolean;
+  showTranslit: boolean;
+  lang: 'de' | 'tr';
   playing: boolean;
   bookmarked: boolean;
   selected: boolean;
@@ -246,6 +261,7 @@ const AyahItem = memo(function AyahItem({
   onBookmark: () => void;
   onPlay: () => void;
   onShare: () => void;
+  onCheck: () => void;
 }) {
   const theme = useTheme();
   const t = useT();
@@ -279,6 +295,7 @@ const AyahItem = memo(function AyahItem({
         }}>
         {row.arabic} {'۝' + toArabicDigits(row.aya)}
       </AppText>
+      {showTranslit ? <Transliteration lang={lang} text={row.translit} /> : null}
       {showTranslation ? (
         <AppText color="textSecondary" style={{ fontSize: translationSize, lineHeight: Math.round(translationSize * 1.5) }}>
           {row.translation}
@@ -289,6 +306,7 @@ const AyahItem = memo(function AyahItem({
           <ActionButton icon={bookmarked ? 'bookmark-remove' : 'bookmark-plus-outline'} label={bookmarked ? t.reader.removeBookmark : t.reader.bookmark} onPress={onBookmark} />
           <ActionButton icon="play-circle-outline" label={t.reader.playFromHere} onPress={onPlay} />
           <ActionButton icon="share-variant-outline" label={t.reader.share} onPress={onShare} />
+          <ActionButton icon="microphone-outline" label={t.recite.checkFromHere} onPress={onCheck} />
         </View>
       ) : null}
     </Pressable>

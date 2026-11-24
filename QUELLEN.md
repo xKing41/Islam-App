@@ -26,6 +26,13 @@ Bedingungen laut Tanzil:
 
 Hinweis zur Anzeige: In der Tanzil-Datei steht die Basmala am Anfang von Vers 1 jeder Sure (außer Sure 1 und 9). Die App zeigt sie als Überschrift über der Sure an, wie es auch im gedruckten Mushaf üblich ist. Am Text selbst wird nichts geändert.
 
+### Weitere Tanzil-Dateien
+| Datei | Verwendung | Bedingungen |
+|---|---|---|
+| `quran-simple.txt` (einfacher Text mit Vokalzeichen, ohne Pausenzeichen) | Anzeige in „Rezitation prüfen“. Ein Test stellt sicher, dass jedes Wort genau dem Text ohne Vokalzeichen entspricht. | CC BY 3.0 wie oben |
+| `tr.transliteration.txt` – „Çeviriyazı“ (Muhammet Abay) | Türkische Umschrift (okunuşu) | nur nicht-kommerziell |
+| `en.transliteration.txt` – „Transliteration“ | Lateinische Umschrift (deutsche Oberfläche); `<u>` = lang/emphatisch, `<b>` = nicht gesprochen | nur nicht-kommerziell |
+
 ## 2. Deutsche Übersetzung: Bubenheim & Elyas (QuranEnc.com)
 
 | | |
@@ -71,6 +78,23 @@ Verfügbar: Mishary Rashid Alafasy, Mahmoud Khalil Al-Husary (auch im Lernmodus 
 
 Bei einzelnen Hadithen gibt HadeethEnc die Einstufung oder Quelle nur auf Arabisch an. Die App zeigt sie dann so, wie sie dort steht.
 
+## 5a. Dua & Zikr
+
+- **Aus dem Koran:** eine Auswahl bekannter Bittgebete (vor allem „Rabbanā“-Verse), siehe `src/lib/duas.ts`. Die App zeigt den Vers **unverändert** aus den Koran-Quellen oben (Tanzil, QuranEnc), mit Umschrift von Tanzil. Hier wird nur festgelegt, *welche* Verse gezeigt werden. Jede Stelle lässt sich im Koran-Leser nachprüfen, und ein Test prüft, dass die Verse existieren und die erwarteten Worte enthalten.
+- **Aus der Sunnah:** die Themen „Dua und Zikr“ der HadeethEnc-Enzyklopädie, zum Beispiel Morgen- und Abendgedenken, Gedenken beim Gebet, überlieferte Bittgebete sowie Bittgebete in schwierigen Zeiten, jeweils mit arabischem Text, Übersetzung, Quelle, Einstufung und Erläuterung. Im Türkischen gibt es dazu über 100 Hadithe, im Deutschen über 50.
+- **Nicht verwendet:** Hisnul Muslim. Ein geprüfter, frei verfügbarer Datensatz mit deutscher und türkischer Übersetzung war nicht zu finden, und selbst übersetzen kommt bei religiösen Texten nicht infrage.
+
+## 5b. Rezitation prüfen: Spracherkennung auf dem Gerät
+
+| | |
+|---|---|
+| Modell | [tarteel-ai/whisper-tiny-ar-quran](https://huggingface.co/tarteel-ai/whisper-tiny-ar-quran) von Tarteel AI: ein Whisper-Modell, das auf Koran-Rezitationen trainiert wurde (Apache-2.0) |
+| Umwandlung | Automatisch per GitHub-Workflow `.github/workflows/model.yml`: whisper.cpp v1.9.3 (MIT), quantisiert auf q5_1 (32 MB) |
+| Messung | 159 Verse von drei Rezitatoren (Alafasy, Husary, Minshawi; EveryAyah) gegen den Tanzil-Text: **9,4 % Wortfehlerrate** bei exaktem Wortvergleich. Die App erlaubt kleine Schreibunterschiede, dadurch werden weniger Wörter fälschlich als Fehler markiert. |
+| Einbindung | whisper.rn (MIT); Mikrofon über expo-audio |
+| Datenschutz | Die Erkennung läuft vollständig auf dem Handy. Die Stimme wird nicht gespeichert und nicht übertragen. Aus dem Internet geladen wird nur einmalig das Modell (aus dem GitHub-Release `modell-quran-v1`, mit Prüfsumme). |
+| Grenzen | Geprüft wird der Wortlaut (falsche, ausgelassene und zusätzliche Wörter). Tajwid-Regeln wie Dehnungen, Ghunna oder die Aussprache einzelner Buchstaben werden **nicht** bewertet. |
+
 ## 6. Gebetszeiten, Qibla & Hijri-Kalender: Berechnung auf dem Gerät
 
 - **adhan-js** (Batoul Apps, MIT-Lizenz, v4.4.6): astronomische Berechnung der Gebetszeiten und der Qibla-Richtung. Standard ist die Methode „Turkey“, eine Annäherung an die Diyanet-Methode (Fajr 18°, Isha 17° plus die Diyanet-Zuschläge, *temkin*). Für Deutschland ist das eine **Annäherung**. Die offiziellen DITIB-/Diyanet-Zeiten können um einige Minuten abweichen, im Sommer bei Fajr und Isha auch mehr. Deshalb gibt es eine Feinjustierung pro Gebet.
@@ -101,6 +125,9 @@ Die arabischen Namen stammen aus den Tanzil-Metadaten. Die deutschen Umschriften
 228df2a717671aeb9d2ff573002bd28d6b3f973f4bc7153554e3a81663d67610  data/sources/tanzil/quran-simple-clean.txt
 8867c1d88191472adec9db694b3cd9f135b1a2ef580574d32cf888dcb22c5c7a  data/sources/tanzil/quran-data.xml
 a9be7b4f291d8cf6f72dbd22dbc4b58f4716c137e56dbdc562aee3fc8c4bc4af  data/sources/tanzil/tr.diyanet.txt
+7c30902a1060d14249791a24cb364ac8ae178455373fd545633b33a2254d3151  data/sources/tanzil/quran-simple.txt
+a4130441fb6c2e8c38510461cbb1588170f593d046680691c99cdb5fb474bb19  data/sources/tanzil/tr.transliteration.txt
+8c20d95e484534e921cd2e0d2546aab7f5300090c0bd76697095b3ca1db1e01d  data/sources/tanzil/en.transliteration.txt
 568994caa6efeafea41a2388d69df391688ae4146a65d05ce081c88720db03fb  data/sources/quranenc/german_bubenheim.sqlite
 1bad8f575b1bc9d1da69198b2668cb74f148456c2d9e15b7a900858561b38bfb  data/sources/quranenc/turkish_shahin.sqlite
 ```

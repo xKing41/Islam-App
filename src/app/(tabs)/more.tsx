@@ -1,21 +1,11 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { View } from 'react-native';
 
 import { AppText, ListGroup, ListRow, Screen } from '@/components/ui';
-import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n';
 
 export default function MoreScreen() {
   const t = useT();
-  const theme = useTheme();
-  const soon = (
-    <View style={{ backgroundColor: theme.accentSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 }}>
-      <AppText variant="caption" color="accent" style={{ fontWeight: '600' }}>
-        {t.common.comingSoon}
-      </AppText>
-    </View>
-  );
 
   return (
     <Screen topInset>
@@ -24,8 +14,8 @@ export default function MoreScreen() {
         <ListRow icon="counter" title={t.more.tasbih} chevron onPress={() => router.push('/tasbih')} />
         <ListRow icon="calendar-month" title={t.more.calendar} chevron onPress={() => router.push('/calendar')} />
         <ListRow icon="weather-night" title={t.more.ramadan} chevron onPress={() => router.push('/ramadan')} />
-        <ListRow icon="hands-pray" title={t.more.duas} right={soon} />
-        <ListRow icon="microphone-outline" title={t.more.recitationCheck} right={soon} last />
+        <ListRow icon="hands-pray" title={t.more.duas} chevron onPress={() => router.push('/duas')} />
+        <ListRow icon="microphone-outline" title={t.more.recitationCheck} chevron onPress={() => router.push('/recite')} last />
       </ListGroup>
       <ListGroup>
         <ListRow icon="bell-ring-outline" title={t.more.prayerSettings} chevron onPress={() => router.push('/prayer-settings')} />

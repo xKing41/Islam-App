@@ -95,6 +95,30 @@ PY
   echo "::warning::Text nicht gefunden: $1"
 }
 
+# Wartet, bis ein Text auf dem Bildschirm erscheint (max. $2 Sekunden).
+wait_text() {
+  local limit=${2:-60} waited=0
+  while [ $waited -lt $limit ]; do
+    adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1
+    if adb shell cat /sdcard/ui.xml 2>/dev/null | grep -q "$1"; then echo "Gefunden: $1 (nach ${waited}s)"; return 0; fi
+    sleep 5; waited=$((waited + 5))
+  done
+  echo "::warning::Nicht erschienen: $1"
+  return 1
+}
+
+# Wartet, bis ein Text vom Bildschirm verschwunden ist (max. $2 Sekunden).
+wait_gone() {
+  local limit=${2:-60} waited=0
+  while [ $waited -lt $limit ]; do
+    adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1
+    if ! adb shell cat /sdcard/ui.xml 2>/dev/null | grep -q "$1"; then echo "Verschwunden: $1 (nach ${waited}s)"; return 0; fi
+    sleep 5; waited=$((waited + 5))
+  done
+  echo "::warning::Nicht verschwunden: $1"
+  return 1
+}
+
 check_running() { # $1 = Name
   adb exec-out screencap -p > "$OUT/$1.png"
   if running; then echo "OK: $1"; else echo "::error::App läuft nicht mehr nach: $1"; fail=1; fi
@@ -125,6 +149,21 @@ open_page settings "islamapp://settings"
 open_page prayer-settings "islamapp://prayer-settings"
 open_page sources "islamapp://sources"
 open_page more "islamapp://more"
+
+# Dua & Zikr
+open_page duas "islamapp://duas"
+
+# Rezitation prüfen: Modell laden und Selbsttest (Al-Fatiha 1:2)
+open_page recite "islamapp://recite?sura=1&aya=1" 8
+tap_text "Modell herunterladen"
+if wait_gone "Erkennung einrichten" 180; then
+  scroll_tap_text "Erkennung testen"
+  sleep 30
+  check_running selbsttest
+  echo "================ Selbsttest der Erkennung ================"
+  adb logcat -d | grep -E "\[Selbsttest\]|\[Rezitation\]|RNWhisper|whisper_" | tail -20
+  echo "=========================================================="
+fi
 
 # Koran-Audio starten (Sure 1)
 open_page sura1 "islamapp://sura/1"

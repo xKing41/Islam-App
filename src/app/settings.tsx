@@ -40,6 +40,7 @@ export default function SettingsScreen() {
       <SectionTitle>{t.settings.quran}</SectionTitle>
       <ListGroup>
         <SwitchRow title={t.settings.showTranslation} value={s.showTranslation} onValueChange={(v) => s.set({ showTranslation: v })} />
+        <SwitchRow title={t.settings.showTranslit} value={s.showTransliteration} onValueChange={(v) => s.set({ showTransliteration: v })} />
         <SwitchRow title={t.settings.keepAwake} value={s.keepAwake} onValueChange={(v) => s.set({ keepAwake: v })} />
         <ListRow
           title={t.settings.arabicSize}

@@ -79,6 +79,26 @@ export const SOURCES: SourceInfo[] = [
     version: '11/2026',
   },
   {
+    name: 'Tanzil Project – Umschrift',
+    url: 'https://tanzil.net/trans/',
+    usedFor: {
+      de: 'Lateinische Umschrift der Verse (Tanzil „Transliteration“) und türkische Umschrift (Çeviriyazı, Muhammet Abay); dazu der einfache Text mit Vokalzeichen für „Rezitation prüfen“',
+      tr: 'Ayetlerin Latin harfli okunuşu (Tanzil "Transliteration") ve Türkçe okunuşu (Çeviriyazı, Muhammet Abay); ayrıca kıraat kontrolü için harekeli basit metin',
+    },
+    license: { de: 'Nur für nicht-kommerzielle Zwecke bzw. CC BY 3.0 (Korantext)', tr: 'Yalnızca ticari olmayan kullanım / CC BY 3.0 (Kur’an metni)' },
+    version: '2010 / Simple 1.1',
+  },
+  {
+    name: 'Tarteel AI – whisper-tiny-ar-quran',
+    url: 'https://huggingface.co/tarteel-ai/whisper-tiny-ar-quran',
+    usedFor: {
+      de: 'Spracherkennung für „Rezitation prüfen“ – ein auf Koran-Rezitationen trainiertes Whisper-Modell. Läuft auf dem Gerät; die Stimme verlässt das Handy nicht.',
+      tr: 'Kıraat kontrolü için ses tanıma – Kur’an tilavetleriyle eğitilmiş bir Whisper modeli. Cihazda çalışır; ses telefondan çıkmaz.',
+    },
+    license: { de: 'Apache-2.0 (umgewandelt mit whisper.cpp, MIT; Einbindung über whisper.rn, MIT)', tr: 'Apache-2.0 (whisper.cpp ile dönüştürüldü, MIT; whisper.rn ile, MIT)' },
+    version: 'modell-quran-v1',
+  },
+  {
     name: 'adhan-js (Batoul Apps)',
     url: 'https://github.com/batoulapps/adhan-js',
     usedFor: {

@@ -9,11 +9,14 @@
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@umalqura/core": "^0.0.7",
     "adhan": "^4.4.6",
+    "buffer": "^6.0.3",
     "expo": "~58.0.26",
+    "expo-asset": "~58.0.21",
     "expo-audio": "~58.0.12",
     "expo-background-task": "~58.0.13",
     "expo-build-properties": "~58.0.12",
     "expo-constants": "~58.0.16",
+    "expo-file-system": "~58.0.14",
     "expo-font": "~58.0.12",
     "expo-haptics": "~58.0.8",
     "expo-keep-awake": "~58.0.4",
@@ -36,6 +39,7 @@
     "react-native-svg": "^15.16.0",
     "react-native-web": "~0.21.4",
     "react-native-worklets": "0.13.0",
+    "whisper.rn": "^0.7.4",
     "zustand": "^5.1.0"
   },
   "devDependencies": {
