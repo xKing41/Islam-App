@@ -61,6 +61,39 @@ PY
   fi
 }
 
+# Scrollt nach unten, bis der Text sichtbar ist, und tippt darauf.
+scroll_tap_text() {
+  local h
+  h=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f2)
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1
+    adb pull /sdcard/ui.xml "$OUT/ui.xml" > /dev/null 2>&1
+    local pos
+    pos=$(python3 - "$1" "$OUT/ui.xml" "$h" <<'PY'
+import re, sys
+text, path, h = sys.argv[1], sys.argv[2], int(sys.argv[3])
+xml = open(path, encoding='utf-8').read()
+for m in re.finditer(r'<node [^>]*>', xml):
+    n = m.group(0)
+    t = re.search(r' text="([^"]*)"', n)
+    if t and t.group(1) == text:
+        x1, y1, x2, y2 = map(int, re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', n).groups())
+        if y1 > 0 and y2 < h * 0.85:
+            print((x1 + x2) // 2, (y1 + y2) // 2)
+        break
+PY
+)
+    if [ -n "$pos" ]; then
+      adb shell input tap $pos
+      echo "Tippe auf \"$1\" bei $pos"
+      return 0
+    fi
+    adb shell input swipe 540 $((h * 7 / 10)) 540 $((h * 3 / 10)) 600
+    sleep 1
+  done
+  echo "::warning::Text nicht gefunden: $1"
+}
+
 check_running() { # $1 = Name
   adb exec-out screencap -p > "$OUT/$1.png"
   if running; then echo "OK: $1"; else echo "::error::App läuft nicht mehr nach: $1"; fail=1; fi
@@ -97,6 +130,14 @@ open_page sura1 "islamapp://sura/1"
 tap_text "Abspielen"
 sleep 10
 check_running audio
+
+# Test-Erinnerung mit Azan-Kanal auslösen
+open_page prayer-settings-test "islamapp://prayer-settings" 6
+scroll_tap_text "Test-Erinnerung senden"
+sleep 10
+check_running test-erinnerung
+echo "Benachrichtigungen der App:"
+adb shell dumpsys notification --noredact | grep -c "pkg=$PKG" || true
 
 echo "================ Geplante Alarme (Erinnerungen) ================"
 adb shell dumpsys alarm | grep -c "$PKG" || true
