@@ -1,0 +1,69 @@
+# Baut das Erkennungsmodell für „Rezitation prüfen“:
+# Tarteel-Koranmodelle (Whisper, Apache-2.0) -> ggml für whisper.cpp -> verkleinert (quantisiert)
+# -> Genauigkeit an echten Rezitationen gemessen -> als Download veröffentlicht.
+name: Erkennungsmodell
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Werkzeuge installieren
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet transformers huggingface_hub safetensors numpy
+          git clone --depth 1 --branch v1.9.3 https://github.com/ggml-org/whisper.cpp
+          git clone --depth 1 https://github.com/openai/whisper openai-whisper
+          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF
+          cmake --build whisper.cpp/build -j 4 --target whisper-cli whisper-quantize
+      - name: Modelle laden und umwandeln
+        run: |
+          mkdir -p out
+          for size in base tiny; do
+            python scripts/model/prepare_model.py tarteel-ai/whisper-$size-ar-quran openai/whisper-$size hf-$size
+            mkdir -p conv-$size
+            python whisper.cpp/models/convert-h5-to-ggml.py hf-$size openai-whisper conv-$size
+            cp conv-$size/ggml-model.bin out/ggml-quran-$size-f16.bin
+            for q in q5_1 q8_0; do
+              whisper.cpp/build/bin/whisper-quantize out/ggml-quran-$size-f16.bin out/ggml-quran-$size-$q.bin $q
+            done
+          done
+          ls -la out
+          sha256sum out/*.bin | tee out/SHA256SUMS.txt
+      - name: Genauigkeit messen
+        run: |
+          python scripts/model/eval_model.py whisper.cpp/build/bin/whisper-cli \
+            out/ggml-quran-base-q5_1.bin out/ggml-quran-base-q8_0.bin out/ggml-quran-base-f16.bin \
+            out/ggml-quran-tiny-q5_1.bin out/ggml-quran-tiny-q8_0.bin
+          cat eval-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: modell-quran-v1
+          name: Erkennungsmodell für „Rezitation prüfen“ (v1)
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          files: |
+            out/ggml-quran-base-q5_1.bin
+            out/ggml-quran-base-q8_0.bin
+            out/ggml-quran-tiny-q5_1.bin
+            out/ggml-quran-tiny-q8_0.bin
+            out/SHA256SUMS.txt
+            eval-report.md
+          body: |
+            Erkennungsmodelle für die Funktion „Rezitation prüfen“ der Islam App.
+            Grundlage: tarteel-ai/whisper-base-ar-quran und tarteel-ai/whisper-tiny-ar-quran
+            (Tarteel AI, Apache-2.0), umgewandelt mit whisper.cpp v1.9.3 (MIT).
+            Die App lädt das Modell beim ersten Benutzen automatisch herunter.

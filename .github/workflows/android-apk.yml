@@ -9,6 +9,9 @@ on:
   push:
     paths-ignore:
       - '**.md'
+      - '.github/workflows/model.yml'
+      - '.github/workflows/smoke-test.yml'
+      - 'scripts/model/**'
   workflow_dispatch:
 
 concurrency:
