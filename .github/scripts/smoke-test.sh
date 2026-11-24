@@ -159,8 +159,8 @@ open_page recite "islamapp://recite?sura=1&aya=1" 8
 echo "Internet im Emulator:"; adb shell ping -c 1 -W 3 github.com 2>&1 | tail -2
 scroll_tap_text "Modell herunterladen" 0.7
 if wait_gone "Erkennung einrichten" 180; then
-  scroll_tap_text "Erkennung testen" 0.7
-  sleep 30
+  scroll_tap_text "Erkennung testen" 0.85
+  wait_text "Erkannt:" 90
   check_running selbsttest
   echo "================ Selbsttest der Erkennung ================"
   adb logcat -d | grep -E "\[Selbsttest\]|\[Rezitation\]|RNWhisper|whisper_" | tail -20

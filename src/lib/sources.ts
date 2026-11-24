@@ -89,14 +89,14 @@ export const SOURCES: SourceInfo[] = [
     version: '2010 / Simple 1.1',
   },
   {
-    name: 'Tarteel AI – whisper-tiny-ar-quran',
-    url: 'https://huggingface.co/tarteel-ai/whisper-tiny-ar-quran',
+    name: 'Tarteel AI – whisper-base-ar-quran',
+    url: 'https://huggingface.co/tarteel-ai/whisper-base-ar-quran',
     usedFor: {
       de: 'Spracherkennung für „Rezitation prüfen“ – ein auf Koran-Rezitationen trainiertes Whisper-Modell. Läuft auf dem Gerät; die Stimme verlässt das Handy nicht.',
       tr: 'Kıraat kontrolü için ses tanıma – Kur’an tilavetleriyle eğitilmiş bir Whisper modeli. Cihazda çalışır; ses telefondan çıkmaz.',
     },
     license: { de: 'Apache-2.0 (umgewandelt mit whisper.cpp, MIT; Einbindung über whisper.rn, MIT)', tr: 'Apache-2.0 (whisper.cpp ile dönüştürüldü, MIT; whisper.rn ile, MIT)' },
-    version: 'modell-quran-v1',
+    version: 'modell-quran-v2 (q8_0)',
   },
   {
     name: 'adhan-js (Batoul Apps)',

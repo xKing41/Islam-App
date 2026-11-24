@@ -227,6 +227,7 @@ export default function ReciteScreen() {
     setProgress(0);
     try {
       await downloadModel((f) => setProgress(f));
+      console.log('[Rezitation] Modell bereit:', MODEL.id);
       setModelReady(true);
     } catch (e) {
       console.log('[Rezitation] Download-Fehler', String(e));

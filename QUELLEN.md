@@ -88,11 +88,11 @@ Bei einzelnen Hadithen gibt HadeethEnc die Einstufung oder Quelle nur auf Arabis
 
 | | |
 |---|---|
-| Modell | [tarteel-ai/whisper-tiny-ar-quran](https://huggingface.co/tarteel-ai/whisper-tiny-ar-quran) von Tarteel AI: ein Whisper-Modell, das auf Koran-Rezitationen trainiert wurde (Apache-2.0) |
-| Umwandlung | Automatisch per GitHub-Workflow `.github/workflows/model.yml`: whisper.cpp v1.9.3 (MIT), quantisiert auf q5_1 (32 MB) |
-| Messung | 159 Verse von drei Rezitatoren (Alafasy, Husary, Minshawi; EveryAyah) gegen den Tanzil-Text: **9,4 % Wortfehlerrate** bei exaktem Wortvergleich. Die App erlaubt kleine Schreibunterschiede, dadurch werden weniger Wörter fälschlich als Fehler markiert. |
+| Modell | [tarteel-ai/whisper-base-ar-quran](https://huggingface.co/tarteel-ai/whisper-base-ar-quran) von Tarteel AI: ein Whisper-Modell, das auf Koran-Rezitationen trainiert wurde (Apache-2.0) |
+| Umwandlung | Automatisch per GitHub-Workflow `.github/workflows/model.yml`: whisper.cpp v1.9.3 (MIT), quantisiert auf q8_0 (82 MB), Release `modell-quran-v2` |
+| Messung | 159 Verse von drei Rezitatoren (Alafasy, Husary, Minshawi; EveryAyah) gegen den Tanzil-Text: **1,75 % Wortfehlerrate** bei exaktem Wortvergleich, also etwa 98 von 100 Wörtern richtig erkannt. Das kleinere Modell whisper-tiny lag bei 9,2 % und wird deshalb nicht verwendet. Die App erlaubt zusätzlich kleine Schreibunterschiede. |
 | Einbindung | whisper.rn (MIT); Mikrofon über expo-audio |
-| Datenschutz | Die Erkennung läuft vollständig auf dem Handy. Die Stimme wird nicht gespeichert und nicht übertragen. Aus dem Internet geladen wird nur einmalig das Modell (aus dem GitHub-Release `modell-quran-v1`, mit Prüfsumme). |
+| Datenschutz | Die Erkennung läuft vollständig auf dem Handy. Die Stimme wird nicht gespeichert und nicht übertragen. Aus dem Internet geladen wird nur einmalig das Modell (aus dem GitHub-Release `modell-quran-v2`, mit Prüfsumme). |
 | Grenzen | Geprüft wird der Wortlaut (falsche, ausgelassene und zusätzliche Wörter). Tajwid-Regeln wie Dehnungen, Ghunna oder die Aussprache einzelner Buchstaben werden **nicht** bewertet. |
 
 ## 6. Gebetszeiten, Qibla & Hijri-Kalender: Berechnung auf dem Gerät
