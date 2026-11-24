@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
@@ -32,6 +33,9 @@ export default function MoreScreen() {
         <ListRow icon="cog-outline" title={t.more.settings} chevron onPress={() => router.push('/settings')} />
         <ListRow icon="information-outline" title={t.more.sources} chevron onPress={() => router.push('/sources')} last />
       </ListGroup>
+      <AppText variant="caption" color="textMuted" style={{ textAlign: 'center' }}>
+        Islam App · Version {Constants.expoConfig?.version ?? '–'}
+      </AppText>
     </Screen>
   );
 }

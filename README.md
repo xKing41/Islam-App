@@ -20,12 +20,13 @@ Geplant: Dua & Zikr (Hisnul Muslim), **Rezitation prüfen** (Mikrofon erkennt fa
 
 ## App aufs Handy bringen
 
-1. Auf GitHub im Repository oben auf **Actions** gehen.
-2. Den neuesten grünen Lauf „Android-APK“ öffnen.
-3. Unten unter **Artifacts** die Datei `islam-app-apk-…` herunterladen (eine ZIP-Datei).
-4. ZIP auf dem Handy entpacken und die `.apk` antippen. Android fragt einmalig, ob Installationen aus dieser Quelle erlaubt sind.
+**Download (immer die neueste Version):**
+https://github.com/xKing41/Islam-App/releases/latest/download/islam-app.apk
 
-Updates lassen sich einfach drüber installieren. Lesezeichen und Einstellungen bleiben erhalten.
+Link auf dem Handy antippen → herunterladen → öffnen → installieren. Beim ersten Mal fragt Android, ob Installationen aus dem Browser erlaubt sind.
+Updates einfach drüber installieren – Einstellungen und Lesezeichen bleiben erhalten.
+
+Jede neue Version wird automatisch gebaut, im Android-Emulator gestartet (Start-Test) und nur dann veröffentlicht, wenn die App dort fehlerfrei läuft.
 
 ## Entwicklung
 
