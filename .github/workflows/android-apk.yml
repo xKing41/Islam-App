@@ -1,0 +1,59 @@
+# Baut bei jedem Push automatisch eine installierbare Android-App (APK).
+# Die fertige Datei liegt danach unter "Actions" → Lauf auswählen → "Artifacts".
+name: Android-APK
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Typcheck & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  apk:
+    name: APK bauen
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - name: Android-Projekt erzeugen (Expo Prebuild)
+        run: npx expo prebuild --platform android --no-install
+        env:
+          CI: 1
+      - name: APK kompilieren
+        working-directory: android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+      - name: APK benennen
+        run: cp android/app/build/outputs/apk/release/app-release.apk "islam-app-${{ github.run_number }}.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: islam-app-apk-${{ github.run_number }}
+          path: islam-app-*.apk
+          retention-days: 30
