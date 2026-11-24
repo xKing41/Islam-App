@@ -61,8 +61,9 @@ PY
   fi
 }
 
-# Scrollt nach unten, bis der Text sichtbar ist, und tippt darauf.
+# Scrollt nach unten, bis der Text sichtbar ist (oberhalb von $2 der Bildschirmhöhe), und tippt darauf.
 scroll_tap_text() {
+  local maxfrac=${2:-0.85}
   local h w
   h=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f2)
   w=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f1)
@@ -70,16 +71,16 @@ scroll_tap_text() {
     adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1
     adb pull /sdcard/ui.xml "$OUT/ui.xml" > /dev/null 2>&1
     local pos
-    pos=$(python3 - "$1" "$OUT/ui.xml" "$h" <<'PY'
+    pos=$(python3 - "$1" "$OUT/ui.xml" "$h" "$maxfrac" <<'PY'
 import re, sys
-text, path, h = sys.argv[1], sys.argv[2], int(sys.argv[3])
+text, path, h, maxfrac = sys.argv[1], sys.argv[2], int(sys.argv[3]), float(sys.argv[4])
 xml = open(path, encoding='utf-8').read()
 for m in re.finditer(r'<node [^>]*>', xml):
     n = m.group(0)
     t = re.search(r' text="([^"]*)"', n)
     if t and t.group(1) == text:
         x1, y1, x2, y2 = map(int, re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', n).groups())
-        if y1 > 0 and y2 < h * 0.85:
+        if y1 > 0 and y2 < h * maxfrac:
             print((x1 + x2) // 2, (y1 + y2) // 2)
         break
 PY
@@ -155,9 +156,10 @@ open_page duas "islamapp://duas"
 
 # Rezitation prüfen: Modell laden und Selbsttest (Al-Fatiha 1:2)
 open_page recite "islamapp://recite?sura=1&aya=1" 8
-tap_text "Modell herunterladen"
+echo "Internet im Emulator:"; adb shell ping -c 1 -W 3 github.com 2>&1 | tail -2
+scroll_tap_text "Modell herunterladen" 0.7
 if wait_gone "Erkennung einrichten" 180; then
-  scroll_tap_text "Erkennung testen"
+  scroll_tap_text "Erkennung testen" 0.7
   sleep 30
   check_running selbsttest
   echo "================ Selbsttest der Erkennung ================"
@@ -186,5 +188,7 @@ echo "================================================================"
 adb logcat -d > "$OUT/logcat.txt"
 echo "================ Auffällige Log-Zeilen ================"
 grep -nE "FATAL EXCEPTION|E AndroidRuntime|ReactNativeJS|E ReactNative|unknown:React|islamapp|expo\.modules" "$OUT/logcat.txt" | head -250
+echo "================ JavaScript-Meldungen der App ================"
+grep -E "ReactNativeJS" "$OUT/logcat.txt" | tail -60
 echo "======================================================="
 exit $fail
