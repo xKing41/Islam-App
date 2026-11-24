@@ -63,8 +63,9 @@ PY
 
 # Scrollt nach unten, bis der Text sichtbar ist, und tippt darauf.
 scroll_tap_text() {
-  local h
+  local h w
   h=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f2)
+  w=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f1)
   for i in 1 2 3 4 5 6 7 8 9 10; do
     adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1
     adb pull /sdcard/ui.xml "$OUT/ui.xml" > /dev/null 2>&1
@@ -88,7 +89,7 @@ PY
       echo "Tippe auf \"$1\" bei $pos"
       return 0
     fi
-    adb shell input swipe 540 $((h * 7 / 10)) 540 $((h * 3 / 10)) 600
+    adb shell input swipe $((w / 2)) $((h * 7 / 10)) $((w / 2)) $((h * 3 / 10)) 600
     sleep 1
   done
   echo "::warning::Text nicht gefunden: $1"

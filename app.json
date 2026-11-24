@@ -87,7 +87,8 @@
             "extraProguardRules": "-keep class * extends androidx.room.RoomDatabase { <init>(); }\n-keep class androidx.work.** { *; }"
           }
         }
-      ]
+      ],
+      "./plugins/with-abi-splits.js"
     ],
     "experiments": {
       "typedRoutes": false,

@@ -52,16 +52,18 @@ jobs:
           CI: 1
       - name: APK kompilieren
         working-directory: android
-        # arm64-v8a für Handys, x86_64 für den Emulator-Test
+        # Getrennte APKs: arm64-v8a für Handys, x86_64 für den Emulator-Test
         run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,x86_64 --no-daemon
-      - name: APK benennen
+      - name: APKs benennen
         run: |
           mkdir -p apk
-          cp android/app/build/outputs/apk/release/app-release.apk apk/islam-app.apk
+          ls -la android/app/build/outputs/apk/release/
+          cp android/app/build/outputs/apk/release/app-arm64-v8a-release.apk apk/islam-app.apk
+          cp android/app/build/outputs/apk/release/app-x86_64-release.apk apk/islam-app-x86_64.apk
       - uses: actions/upload-artifact@v4
         with:
           name: islam-app-apk
-          path: apk/islam-app.apk
+          path: apk/
           retention-days: 14
 
   smoke:
@@ -89,6 +91,8 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: bash .github/scripts/smoke-test.sh
+        env:
+          APK: apk/islam-app-x86_64.apk
       - uses: actions/upload-artifact@v4
         if: always()
         with:
