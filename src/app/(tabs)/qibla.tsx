@@ -24,7 +24,6 @@ export default function QiblaScreen() {
   const [accuracy, setAccuracy] = useState<number>(3);
   const [noCompass, setNoCompass] = useState(Platform.OS === 'web');
   const smoothed = useRef<number | null>(null);
-  const wasAligned = useRef(false);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -50,6 +49,12 @@ export default function QiblaScreen() {
     };
   }, []);
 
+  const qiblaForEffect = location ? qiblaBearing(location.latitude, location.longitude) : null;
+  const alignedNow = heading !== null && qiblaForEffect !== null && Math.abs(angleDiff(heading, qiblaForEffect)) <= ALIGN_TOLERANCE;
+  useEffect(() => {
+    if (alignedNow) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  }, [alignedNow]);
+
   if (!location) {
     return (
       <Screen topInset>
@@ -65,11 +70,6 @@ export default function QiblaScreen() {
   const h = heading ?? 0;
   const diff = angleDiff(h, qibla);
   const aligned = heading !== null && Math.abs(diff) <= ALIGN_TOLERANCE;
-
-  if (aligned && !wasAligned.current) {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-  }
-  wasAligned.current = aligned;
 
   const size = Math.min(width - Spacing.lg * 2, 340);
   const labels: [string, string, string, string] = lang === 'tr' ? ['K', 'D', 'G', 'B'] : ['N', 'O', 'S', 'W'];

@@ -1,5 +1,3 @@
-import '@/lib/background';
-
 import { Amiri_400Regular, Amiri_700Bold } from '@expo-google-fonts/amiri';
 import { AmiriQuran_400Regular } from '@expo-google-fonts/amiri-quran';
 import { useFonts } from 'expo-font';

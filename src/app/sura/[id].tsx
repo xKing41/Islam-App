@@ -36,13 +36,13 @@ export default function SuraReader() {
   const keepAwake = useSettings((s) => s.keepAwake);
   const bookmarks = useQuranStore((s) => s.bookmarks);
   const toggleBookmark = useQuranStore((s) => s.toggleBookmark);
-  const setLastRead = useQuranStore((s) => s.setLastRead);
 
   const meta = getSuraMeta(sura);
   const title = suraTitle(meta, lang);
   const data = useMemo(() => getSura(sura), [sura]);
   const [selected, setSelected] = useState<number | null>(null);
   const listRef = useRef<FlatList<AyahRow>>(null);
+  const scrollRetries = useRef(0);
 
   const rows: AyahRow[] = useMemo(
     () =>
@@ -82,14 +82,21 @@ export default function SuraReader() {
     }
   }, [player.state.currentAya]);
 
-  // Zuletzt gelesenen Vers merken
+  // Zuletzt gelesenen Vers merken (verzögert, damit beim Scrollen nicht ständig gespeichert wird)
+  const lastReadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onViewable = useRef(({ viewableItems }: { viewableItems: ListViewToken[] }) => {
     const first = viewableItems.find((v) => v.isViewable && v.item);
     const row = first?.item as AyahRow | undefined;
-    if (row) setLastReadRef.current(sura, row.aya);
+    if (!row) return;
+    if (lastReadTimer.current) clearTimeout(lastReadTimer.current);
+    lastReadTimer.current = setTimeout(() => useQuranStore.getState().setLastRead(sura, row.aya), 1200);
   });
-  const setLastReadRef = useRef(setLastRead);
-  setLastReadRef.current = setLastRead;
+  useEffect(
+    () => () => {
+      if (lastReadTimer.current) clearTimeout(lastReadTimer.current);
+    },
+    []
+  );
 
   const bookmarked = useMemo(() => new Set(bookmarks.filter((b) => b.sura === sura).map((b) => b.aya)), [bookmarks, sura]);
 
@@ -192,13 +199,15 @@ export default function SuraReader() {
           maxWidth: MaxContentWidth,
           alignSelf: 'center',
         }}
-        initialNumToRender={Math.min(meta.ayas, Math.max(10, startAya + 3))}
+        initialNumToRender={12}
         windowSize={11}
         onViewableItemsChanged={onViewable.current}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
         onScrollToIndexFailed={(info) => {
+          // Vers noch nicht gemessen: erst ungefähr hinscrollen, dann genau (max. 5 Versuche)
+          if (scrollRetries.current++ > 5) return;
           listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
-          setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, animated: false }), 300);
+          setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, animated: false }), 250);
         }}
       />
       <AudioBar

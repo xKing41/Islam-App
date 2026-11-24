@@ -10,7 +10,7 @@ import { Platform } from 'react-native';
 import { getDictionary } from '@/i18n';
 import { getDayTimes, PRAYER_KEYS } from '@/lib/prayer-times';
 import { addDays, formatTime } from '@/lib/time';
-import type { NotificationSound, PrayerKey, SettingsState } from '@/store/settings';
+import { type NotificationSound, type PrayerKey, type SettingsState, useSettings } from '@/store/settings';
 
 const DAYS_AHEAD = 7;
 
@@ -74,12 +74,15 @@ export async function getPermissionState(): Promise<PermissionState> {
   return { notifications: n.granted, exactAlarms: exact };
 }
 
+/** Fragt nach der Benachrichtigungs-Erlaubnis und plant bei Erfolg sofort alle Erinnerungen. */
 export async function requestNotificationPermission(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const current = await Notifications.getPermissionsAsync();
-  if (current.granted) return true;
-  const res = await Notifications.requestPermissionsAsync();
-  return res.granted;
+  const granted = current.granted || (await Notifications.requestPermissionsAsync()).granted;
+  if (granted && !current.granted) {
+    reschedulePrayerNotifications(useSettings.getState()).catch(() => {});
+  }
+  return granted;
 }
 
 export async function requestExactAlarmPermission(): Promise<boolean> {
