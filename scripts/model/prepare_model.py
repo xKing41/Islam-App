@@ -5,6 +5,7 @@ Tokenizer-Dateien aus dem zugrunde liegenden OpenAI-Whisper-Modell.
 
     python scripts/model/prepare_model.py tarteel-ai/whisper-base-ar-quran openai/whisper-base hf-base
 """
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -22,4 +23,12 @@ if missing:
     for f in missing:
         if (tmp / f).exists():
             shutil.copy(tmp / f, out / f)
+# whisper.cpp übernimmt "max_length" als Textkontext-Länge. Manche Feinabstimmungen speichern dort
+# einen Generierungswert (z. B. 1024) statt der echten Positionsanzahl (448) -> Modell nicht ladbar.
+cfg_path = out / "config.json"
+cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+if cfg.get("max_length") != cfg.get("max_target_positions"):
+    print("Korrigiere max_length", cfg.get("max_length"), "->", cfg.get("max_target_positions"))
+    cfg["max_length"] = cfg.get("max_target_positions", 448)
+    cfg_path.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
 print(sorted(p.name for p in out.iterdir()))

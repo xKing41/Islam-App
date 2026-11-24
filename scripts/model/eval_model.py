@@ -74,7 +74,7 @@ for r, s, a in items:
 report = ["# Auswertung Erkennungsmodelle", "", f"{len(items)} Verse, Rezitatoren: {', '.join(RECITERS)}", ""]
 report.append("| Modell | Größe | Wortfehlerrate (WER) | Rechenzeit pro Audiosekunde |")
 report.append("|---|---|---|---|")
-examples = []
+examples = {}
 for model in MODELS:
     errors = words = 0
     t_audio = t_cpu = 0.0
@@ -89,12 +89,13 @@ for model in MODELS:
         e = edit_distance(ref, hyp)
         errors += e
         words += len(ref)
-        if model == MODELS[0] and r == RECITERS[0] and e > 0:
-            examples.append(f"- {s}:{a} ({r}) erwartet: `{' '.join(ref)}` – erkannt: `{' '.join(hyp)}`")
+        if r == RECITERS[0] and e > 0 and len(examples.setdefault(model, [])) < 25:
+            examples[model].append(f"- {s}:{a} erwartet: `{' '.join(ref)}` – erkannt: `{' '.join(hyp)}`")
     size = Path(model).stat().st_size / 1e6
     report.append(f"| {Path(model).name} | {size:.0f} MB | {100 * errors / words:.2f} % | {t_cpu / t_audio:.2f} s |")
     print(report[-1], flush=True)
 
-report += ["", "## Abweichungen (erstes Modell, " + RECITERS[0] + ")", ""] + (examples or ["- keine"])
+for model in MODELS:
+    report += ["", f"## Abweichungen {Path(model).name} ({RECITERS[0]})", ""] + (examples.get(model) or ["- keine"])
 Path("eval-report.md").write_text("\n".join(report) + "\n", encoding="utf-8")
 print("\n".join(report))

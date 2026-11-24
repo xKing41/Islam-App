@@ -5,6 +5,10 @@ name: Erkennungsmodell
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release-Tag für die Modelle
+        default: modell-quran-v2
 
 permissions:
   contents: write
@@ -50,8 +54,8 @@ jobs:
       - name: Veröffentlichen
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: modell-quran-v1
-          name: Erkennungsmodell für „Rezitation prüfen“ (v1)
+          tag_name: ${{ inputs.tag }}
+          name: Erkennungsmodell für „Rezitation prüfen“ (${{ inputs.tag }})
           target_commitish: ${{ github.sha }}
           prerelease: true
           make_latest: false
