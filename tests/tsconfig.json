@@ -6,7 +6,8 @@
     ]
   },
   "include": [
-    "./**/*.ts"
+    "./**/*.ts",
+    "../scripts/recite-eval/**/*.ts"
   ],
   "exclude": []
 }
