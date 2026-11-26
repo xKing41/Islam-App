@@ -1,0 +1,29 @@
+# Bewertet die gespeicherten Rohdaten der Erkennung (Release „rezitation-auswertung“) mit dem aktuellen
+# Wortabgleich neu – ohne erneute Erkennung. So passt der Bericht immer zum ausgelieferten Code.
+name: Auswertung neu bewerten
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rescore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Rohdaten laden und bewerten
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download rezitation-auswertung --pattern 'transcripts*.json' --clobber
+          npx tsx scripts/recite-eval/score.ts transcripts.json --out eval-report.md --examples 40
+          npx tsx scripts/recite-eval/score.ts transcripts-suren.json --out eval-report-suren.md --examples 40
+          cat eval-report.md eval-report-suren.md >> "$GITHUB_STEP_SUMMARY"
+          gh release upload rezitation-auswertung eval-report.md eval-report-suren.md --clobber

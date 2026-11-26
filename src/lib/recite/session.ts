@@ -99,8 +99,8 @@ export function pairForWord(a: Alignment, segOfHeard: number[], segCount: number
  * Zusammenhören: Ein Schnitt zwischen zwei Abschnitten mitten im Vers ist die häufigste Ursache für
  * Fehlalarme (ganze Verse in einem Stück erkennt das Modell fast fehlerfrei). Wurden zwei Abschnitte
  * gemeinsam noch einmal erkannt und hört die Erkennung dort das erwartete Wort, gilt: „ausgelassen“
- * entfällt, „falsch“ wird zu „unsicher“ (nie zu „richtig“ – echte Fehler bleiben sichtbar), ein nur
- * durch den Schnitt doppelt gehörtes zusätzliches Wort entfällt.
+ * entfällt, „falsch“ wird zu „unsicher“ (nie zu „richtig“ – echte Fehler bleiben sichtbar), ein
+ * zusätzliches Wort, das die gemeinsame Erkennung nicht hört, wird ebenfalls „unsicher“.
  */
 function applyMerged(expected: string[], segments: RecitedSegment[], opts: FormulaOptions, a: Alignment, segOfHeard: number[]): Alignment {
   const cache = new Map<number, Alignment>();
@@ -123,12 +123,13 @@ function applyMerged(expected: string[], segments: RecitedSegment[], opts: Formu
     if (pairAlign(p).status[i] !== 'correct') return;
     status[i] = st === 'missing' ? 'correct' : 'uncertain';
   });
-  const extras = a.extras.filter((e) => {
-    if (e.kind !== 'extra') return true;
+  const extras = a.extras.map((e) => {
+    if (e.kind !== 'extra' || e.uncertain) return e;
     const p = pairForWord(a, segOfHeard, segments.length, -1, e.heardIndex);
-    if (p === null || !segments[p]?.withNext) return true;
+    if (p === null || !segments[p]?.withNext) return e;
     const w = tokenize(e.word)[0]?.norm;
-    return pairAlign(p).extras.some((x) => x.kind === 'extra' && Math.abs(x.before - e.before) <= 1 && tokenize(x.word)[0]?.norm === w);
+    const confirmed = pairAlign(p).extras.some((x) => x.kind === 'extra' && Math.abs(x.before - e.before) <= 1 && tokenize(x.word)[0]?.norm === w);
+    return confirmed ? e : { ...e, uncertain: true };
   });
   return { ...a, status, extras };
 }
