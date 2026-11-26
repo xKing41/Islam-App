@@ -201,6 +201,45 @@ export class Segmenter {
   }
 }
 
+/**
+ * Teilungspunkt (Sample-Index) für das Nachhören eines Abschnitts in zwei Hälften: die längste ruhige
+ * Stelle (Atempause) im mittleren Drittel, sonst die leiseste Stelle dort.
+ */
+export function splitPoint(pcm: Int16Array, sampleRate = 16000): number {
+  const frame = Math.round(sampleRate * 0.03);
+  const n = Math.floor(pcm.length / frame);
+  if (n < 12) return Math.floor(pcm.length / 2);
+  const rms: number[] = [];
+  for (let k = 0; k < n; k++) rms.push(rmsOf(pcm.subarray(k * frame, (k + 1) * frame)));
+  const voiced = rms.filter((r) => r > 0.012).sort((a, b) => a - b);
+  const quiet = Math.max(0.012, (voiced[Math.floor(voiced.length / 2)] ?? 0) * 0.25);
+  const from = Math.floor(n / 3);
+  const to = Math.ceil((2 * n) / 3);
+  let bestStart = -1;
+  let bestLen = 0;
+  let runStart = -1;
+  for (let i = from; i < to; i++) {
+    if (rms[i] <= quiet) {
+      if (runStart < 0) runStart = i;
+      if (i - runStart + 1 > bestLen) {
+        bestLen = i - runStart + 1;
+        bestStart = runStart;
+      }
+    } else runStart = -1;
+  }
+  if (bestLen >= 3) return (bestStart + Math.floor(bestLen / 2)) * frame;
+  let best = from;
+  let bestVal = Infinity;
+  for (let i = from + 2; i < to - 2; i++) {
+    const v = rms[i - 2] + rms[i - 1] + rms[i] + rms[i + 1] + rms[i + 2];
+    if (v < bestVal) {
+      bestVal = v;
+      best = i;
+    }
+  }
+  return best * frame;
+}
+
 function rmsOf(f: Int16Array): number {
   let sum = 0;
   for (let k = 0; k < f.length; k++) sum += f[k] * f[k];

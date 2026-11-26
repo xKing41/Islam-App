@@ -13,7 +13,7 @@ on:
         default: '["Husary_128kbps","Alafasy_128kbps","Minshawy_Murattal_128kbps"]'
       variants:
         description: Suchverfahren (JSON-Liste)
-        default: '["greedy","beam5"]'
+        default: '["greedy","beam5","greedy-split"]'
 
 permissions:
   contents: write

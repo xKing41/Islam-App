@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 
 import { alignWords, applyVocabulary, combineOpinions, stripFormulas, summarize, tokenize, toWords, vowelHints, vowelPattern } from '../src/lib/recite/align';
 import { resampleTo16k, Segmenter } from '../src/lib/recite/segmenter';
-import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags } from '../src/lib/recite/session';
+import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags, segmentsWithGaps } from '../src/lib/recite/session';
 
 const root = join(__dirname, '..');
 const sura = (n: number) => JSON.parse(readFileSync(join(root, `src/data/quran/suras/${String(n).padStart(3, '0')}.json`), 'utf8'));
@@ -283,6 +283,20 @@ describe('Sitzung (mehrere Abschnitte)', () => {
     assert.deepEqual(segmentsWithFlags(res), [1]);
     const checked = evaluateSession(exp, [bad[0], { ...bad[1], alt: tokenize('الرحمن الرحيم') }, bad[2]], opts);
     assert.equal(checked.alignment.status[5], 'uncertain');
+  });
+
+  it('füllt beim Nachhören übersprungene Wörter, ändert aber keine falschen', () => {
+    // 94:5–6: die Erkennung hört die wiederholte Phrase nur einmal
+    const exp = toWords('فان مع العسر يسرا ان مع العسر يسرا فاذا فرغت فانصب');
+    const segs = [{ tokens: tokenize('فان مع العسر يسرا فاذا فرغت فانصب') }];
+    const before = evaluateSession(exp, segs, opts);
+    assert.equal(summarize(before.alignment).missing, 4);
+    assert.deepEqual(segmentsWithGaps(before), [0]);
+    const after = evaluateSession(exp, [{ ...segs[0], split: tokenize('فان مع العسر يسرا ان مع العسر يسرا فاذا فرغت فانصب') }], opts);
+    assert.equal(summarize(after.alignment).missing, 0);
+    // ein falsches Wort bleibt falsch, auch wenn das Nachhören es richtig hört
+    const wrong = evaluateSession(exp, [{ tokens: tokenize('فان مع العسر يسرا ان مع العسر يسرا فاذا فرغت فارغب'), split: tokenize('فان مع العسر يسرا ان مع العسر يسرا فاذا فرغت فانصب') }], opts);
+    assert.equal(wrong.alignment.status[10], 'wrong');
   });
 
   it('meldet einen angefangenen, aber nicht beendeten Vers als unvollständig', () => {

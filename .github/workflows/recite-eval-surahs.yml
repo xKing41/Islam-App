@@ -8,7 +8,7 @@ on:
     inputs:
       variants:
         description: Suchverfahren (JSON-Liste)
-        default: '["greedy","beam5"]'
+        default: '["greedy","beam5","greedy-split"]'
 
 permissions:
   contents: write

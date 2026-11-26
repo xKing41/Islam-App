@@ -23,14 +23,14 @@ import { normalizeArabic, normalizeLatin } from '@/lib/quran/text';
 import { alignWords, type Extra, summarize, type Token, tokenize, vowelHints, type WordStatus } from '@/lib/recite/align';
 import { type Decoder, getWhisper, releaseWhisper, selfTest, transcribePcm } from '@/lib/recite/engine';
 import { downloadModel, isModelReady, MODEL } from '@/lib/recite/model';
-import { concat, resampleTo16k, Segmenter } from '@/lib/recite/segmenter';
-import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags } from '@/lib/recite/session';
+import { concat, resampleTo16k, Segmenter, splitPoint } from '@/lib/recite/segmenter';
+import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags, segmentsWithGaps } from '@/lib/recite/session';
 import { isQuranWord } from '@/lib/recite/vocab';
 import { useQuranStore } from '@/store/quran';
 import { useSettings } from '@/store/settings';
 
 type Phase = 'idle' | 'loading' | 'listening' | 'finishing' | 'done';
-type Seg = { pcm: Int16Array; tokens: Token[]; alt?: Token[] };
+type Seg = { pcm: Int16Array; tokens: Token[]; alt?: Token[]; split?: Token[] };
 
 /**
  * Hauptdurchgang und Gegenprobe der Erkennung. Markiert der Hauptdurchgang ein Wort, wird der Abschnitt
@@ -121,6 +121,7 @@ export default function ReciteScreen() {
   const stopped = useRef(true);
   const segsRef = useRef<Seg[]>(params.demo === '1' ? DEMO_SEGMENTS : []);
   const altTried = useRef<Set<number>>(new Set());
+  const splitTried = useRef<Set<number>>(new Set());
   const lastLevel = useRef(0);
   const recFile = useRef<File | null>(null);
 
@@ -142,6 +143,7 @@ export default function ReciteScreen() {
   const reset = useCallback(() => {
     segsRef.current = [];
     altTried.current = new Set();
+    splitTried.current = new Set();
     setSegs([]);
     setError(null);
     setDemo(false);
@@ -181,16 +183,30 @@ export default function ReciteScreen() {
           setSegs(segsRef.current);
           continue;
         }
-        // 2) Gegenprobe für Abschnitte mit markierten Wörtern
-        if (!SECOND_OPINION) break;
         const res = evaluateSession(expectedRef.current.words, segsRef.current, expectedRef.current.formula, isQuranWord);
-        const k = segmentsWithFlags(res).find((x) => !altTried.current.has(x));
-        if (k === undefined) break;
-        altTried.current.add(k);
+        // 2) Gegenprobe für Abschnitte mit markierten Wörtern
+        const k = SECOND_OPINION ? segmentsWithFlags(res).find((x) => !altTried.current.has(x)) : undefined;
+        if (k !== undefined && SECOND_OPINION) {
+          altTried.current.add(k);
+          setChecking(true);
+          const text = await transcribePcm(segsRef.current[k].pcm, SECOND_OPINION);
+          console.log('[Rezitation] Gegenprobe:', text);
+          segsRef.current = segsRef.current.map((x, i) => (i === k ? { ...x, alt: tokenize(text) } : x));
+          setSegs(segsRef.current);
+          continue;
+        }
+        // 3) Nachhören in zwei Hälften, wo Wörter zu fehlen scheinen (die Erkennung überspringt in
+        //    längeren Abschnitten manchmal eine Phrase)
+        const g = segmentsWithGaps(res).find((x) => !splitTried.current.has(x));
+        if (g === undefined) break;
+        splitTried.current.add(g);
         setChecking(true);
-        const text = await transcribePcm(segsRef.current[k].pcm, SECOND_OPINION);
-        console.log('[Rezitation] Gegenprobe:', text);
-        segsRef.current = segsRef.current.map((x, i) => (i === k ? { ...x, alt: tokenize(text) } : x));
+        const pcm2 = segsRef.current[g].pcm;
+        const at = splitPoint(pcm2);
+        const a1 = await transcribePcm(pcm2.subarray(0, at), PRIMARY);
+        const a2 = await transcribePcm(pcm2.subarray(at), PRIMARY);
+        console.log('[Rezitation] Nachhören:', a1, '|', a2);
+        segsRef.current = segsRef.current.map((x, i) => (i === g ? { ...x, split: tokenize(`${a1} ${a2}`) } : x));
         setSegs(segsRef.current);
       }
     } catch (e) {
@@ -267,6 +283,7 @@ export default function ReciteScreen() {
     }).catch(() => {});
     segsRef.current = [];
     altTried.current = new Set();
+    splitTried.current = new Set();
     setSegs([]);
     setDemo(false);
     queue.current = [];

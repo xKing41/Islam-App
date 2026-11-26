@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { alignRecitation, applyVocabulary, combineOpinions, summarize, tokenize, type Alignment } from '../../src/lib/recite/align';
+import { evaluateSession } from '../../src/lib/recite/session';
 import { alignWords as legacyAlign, stripFormulas as legacyStrip, toWords as legacyWords } from './legacy-align';
 
 type Transcripts = Record<string, { segments: { ms: number; text: Record<string, string> }[] }>;
@@ -79,7 +80,7 @@ function lev(a: string, b: string) {
 }
 
 type FO = { expectedStartsWithBasmala: boolean; endsWithFatiha: boolean };
-type Matcher = { name: string; run: (expected: string[], heardText: string[], s: number, a: number, fo?: FO) => Alignment };
+type Matcher = { name: string; run: (expected: string[], heardText: string[], s: number, a: number, fo?: FO, key?: string) => Alignment };
 
 const formulaOpts = (s: number, a: number) => ({ expectedStartsWithBasmala: s === 1 && a === 1, endsWithFatiha: s === 1 && a === 7 });
 
@@ -118,6 +119,23 @@ if (V.includes('greedy') && V.includes('beam5')) {
   // so arbeitet die App: schnell erkennen, markierte Stellen gründlich gegenprüfen, Wortschatz-Regel
   configs.push({ m: strict('greedy', 'beam5', true), variants: ['greedy', 'beam5'] });
 }
+if (V.includes('greedy') && V.includes('beam5') && V.includes('greedy-split')) {
+  // … und zusätzlich Nachhören in zwei Hälften (wie die App bei scheinbar ausgelassenen Wörtern)
+  configs.push({
+    m: {
+      name: 'streng, greedy + Gegenprobe beam5 + Nachhören + Wortschatz',
+      run: (expected, _texts, s, a, fo, key) => {
+        const segs = (data[key!]?.segments ?? []).map((x) => ({
+          tokens: tokenize(x?.text.greedy ?? ''),
+          alt: tokenize(x?.text.beam5 ?? ''),
+          split: tokenize(x?.text['greedy-split'] ?? ''),
+        }));
+        return evaluateSession(expected, segs, fo ?? formulaOpts(s, a), (w) => vocab.has(w)).alignment;
+      },
+    },
+    variants: ['greedy', 'beam5', 'greedy-split'],
+  });
+}
 
 const keyOf = (rec: string, s: number, a: number) => `${rec}/${String(s).padStart(3, '0')}${String(a).padStart(3, '0')}`;
 const reciters = [...new Set(Object.keys(data).map((k) => k.split('/')[0]))];
@@ -154,7 +172,7 @@ for (const { m, variants } of hasVerses ? configs : []) {
     const a = Number(m2[2]);
     const exp = verseWords(s, a);
     const texts = variants.map((v) => textOf(key, v));
-    const al = m.run(exp.norm, texts, s, a);
+    const al = m.run(exp.norm, texts, s, a, undefined, key);
     const sum = summarize(al);
     const unreached = sum.total - sum.reached;
     const bad = sum.wrong + sum.missing + sum.extra + unreached;
@@ -182,7 +200,7 @@ for (const { m, variants } of hasVerses ? configs : []) {
         const key = keyOf(rec, A[0], A[1]);
         if (!complete(key, variants)) continue;
         const texts = variants.map((v) => textOf(key, v));
-        const al = m.run(wb, texts, B[0], B[1]);
+        const al = m.run(wb, texts, B[0], B[1], undefined, key);
         // Ein Vers je Test: nicht erreichte Wörter am Ende zählen wie ausgelassen (die App meldet „Vers unvollständig“)
         const isFlag = (k: number) => k >= 0 && k < al.status.length && ['wrong', 'missing', 'uncertain', 'pending'].includes(al.status[k]);
         const isHard = (k: number) => k >= 0 && k < al.status.length && ['wrong', 'missing', 'pending'].includes(al.status[k]);
@@ -241,7 +259,7 @@ if (suraKeys.length) {
       const exp: string[] = [];
       for (let a = 1; a <= meta.ayas; a++) exp.push(...verseWords(sNum, a).norm);
       const texts = variants.map((v) => textOf(key, v));
-      const al = m.run(exp, texts, sNum, 1, { expectedStartsWithBasmala: sNum === 1, endsWithFatiha: sNum === 1 });
+      const al = m.run(exp, texts, sNum, 1, { expectedStartsWithBasmala: sNum === 1, endsWithFatiha: sNum === 1 }, key);
       const sum = summarize(al);
       const bad = sum.wrong + sum.missing + sum.extra + (sum.total - sum.reached);
       words += sum.total;

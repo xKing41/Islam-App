@@ -152,6 +152,7 @@ export function stripFormulas<T extends string | Token>(heard: T[], opts: Formul
 }
 
 // Kosten der Editierschritte
+const MATCH = -0.5; // richtig erkanntes Wort (Belohnung: die Zuordnung mit den meisten Treffern gewinnt)
 const SUB_SIMILAR = 0.7; // anderes, aber ähnliches Wort
 const SUB = 1; // ganz anderes Wort
 const DEL = 1; // ausgelassenes Wort
@@ -186,7 +187,7 @@ export function alignWords(expected: string[], heardIn: (string | Token)[]): Ali
   const exp = expected.map(matchForm);
   const hf = heard.map((h) => matchForm(h.norm));
   const subCost = (i: number, j: number) => {
-    if (exp[i] === hf[j]) return 0;
+    if (exp[i] === hf[j]) return MATCH;
     return similarity(exp[i], hf[j]) >= 0.5 ? SUB_SIMILAR : SUB;
   };
 
@@ -216,14 +217,14 @@ export function alignWords(expected: string[], heardIn: (string | Token)[]): Ali
         mv = Move.Ins;
       }
       if (j >= 2 && hf[j - 2] + hf[j - 1] === exp[i - 1]) {
-        const c = cost[i - 1][j - 2] + JOIN;
+        const c = cost[i - 1][j - 2] + MATCH + JOIN;
         if (c < best) {
           best = c;
           mv = Move.JoinHeard;
         }
       }
       if (i >= 2 && exp[i - 2] + exp[i - 1] === hf[j - 1]) {
-        const c = cost[i - 2][j - 1] + JOIN;
+        const c = cost[i - 2][j - 1] + 2 * MATCH + JOIN;
         if (c < best) {
           best = c;
           mv = Move.JoinExpected;
@@ -268,7 +269,8 @@ export function alignWords(expected: string[], heardIn: (string | Token)[]): Ali
   let i = bestI;
   let j = m;
   const take = (k: number, st: WordStatus, h: number) => {
-    if (assigned[k]) return false;
+    // „ausgelassen“ aus einem späteren Durchgang zählt nicht, wenn das Wort vorher gesagt wurde
+    if (assigned[k] && !(status[k] === 'missing' && st !== 'missing')) return false;
     assigned[k] = 1;
     status[k] = st;
     if (h >= 0) heardAt[k] = h;

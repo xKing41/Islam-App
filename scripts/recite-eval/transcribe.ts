@@ -14,7 +14,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
-import { Segmenter } from '../../src/lib/recite/segmenter';
+import { Segmenter, splitPoint } from '../../src/lib/recite/segmenter';
 
 type Args = Record<string, string>;
 const args: Args = {};
@@ -217,22 +217,54 @@ async function main() {
     writeFileSync(cacheFile, JSON.stringify(cache));
     dirty = 0;
   };
+  const ensure = (f: string, w: { key: string; n: number }) => {
+    const entry = (cache[w.key] ??= { segments: [] });
+    for (let k = 0; k < w.n; k++) {
+      entry.segments[k] ??= { ms: Math.round(((statSync(join(dirname(f), `${k}.wav`)).size - 44) / 32000) * 1000), text: {} };
+    }
+    return entry;
+  };
   await Promise.all(
     VARIANTS.map(async (variant) => {
+      const split = variant.endsWith('-split');
+      const base = split ? variant.slice(0, -6) : variant;
       const todo: string[] = [];
+      const halves = new Map<string, { f: string; part: 0 | 1 }>();
       for (const [f, w] of where) {
-        if (cache[w.key]?.segments[w.k]?.text[variant] === undefined) todo.push(f);
+        if (cache[w.key]?.segments[w.k]?.text[variant] !== undefined) continue;
+        if (!split) {
+          todo.push(f);
+          continue;
+        }
+        // Nachhören: Abschnitt an einer Atempause in der Mitte teilen, beide Hälften einzeln erkennen
+        const pcm = readWav(f);
+        const at = splitPoint(pcm);
+        const a = f.replace(/\.wav$/, '-a.wav');
+        const b = f.replace(/\.wav$/, '-b.wav');
+        writeWav(a, pcm.subarray(0, at));
+        writeWav(b, pcm.subarray(at));
+        halves.set(a, { f, part: 0 });
+        halves.set(b, { f, part: 1 });
+        todo.push(a, b);
       }
       if (!todo.length) return;
-      console.log(`${variant}: ${todo.length} Abschnitte`);
-      await runRtool(todo, variant, (f, text) => {
-        const w = where.get(f);
-        if (!w) return;
-        const entry = (cache[w.key] ??= { segments: [] });
-        for (let k = 0; k < w.n; k++) {
-          entry.segments[k] ??= { ms: Math.round(((statSync(join(dirname(f), `${k}.wav`)).size - 44) / 32000) * 1000), text: {} };
+      console.log(`${variant}: ${todo.length} Dateien`);
+      const parts = new Map<string, [string?, string?]>();
+      await runRtool(todo, base, (file, text) => {
+        if (!split) {
+          const w = where.get(file);
+          if (!w) return;
+          ensure(file, w).segments[w.k].text[variant] = text;
+        } else {
+          const h = halves.get(file);
+          if (!h) return;
+          const p = parts.get(h.f) ?? [];
+          p[h.part] = text;
+          parts.set(h.f, p);
+          if (p[0] === undefined || p[1] === undefined) return;
+          const w = where.get(h.f)!;
+          ensure(h.f, w).segments[w.k].text[variant] = `${p[0]} ${p[1]}`;
         }
-        entry.segments[w.k].text[variant] = text;
         if (++dirty >= 50) save();
       });
     }),

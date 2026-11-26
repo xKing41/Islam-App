@@ -11,6 +11,8 @@ export type RecitedSegment = {
   tokens: Token[];
   /** Erkannte Wörter der Gegenprobe – nur für Abschnitte mit markierten Wörtern */
   alt?: Token[];
+  /** Nachhören in zwei Hälften – nur für Abschnitte, in denen Wörter zu fehlen scheinen */
+  split?: Token[];
 };
 
 export type SessionResult = {
@@ -42,6 +44,18 @@ export function evaluateSession(
     for (const s of segments) alt.push(...(s.alt ?? s.tokens));
     alignment = combineOpinions(primary, alignRecitation(expected, alt, opts).alignment);
   }
+  if (segments.some((s) => s.split)) {
+    // Nachhören: Hört die Erkennung in den Hälften ein „ausgelassenes“ Wort, hatte sie es zuvor nur
+    // übersprungen (passiert bei längeren Abschnitten und wiederholten Phrasen) – dann zählt es als
+    // rezitiert. Nur für Auslassungen; falsche Wörter werden dadurch nicht verändert.
+    const split: Token[] = [];
+    for (const s of segments) split.push(...(s.split ?? s.tokens));
+    const again = alignRecitation(expected, split, opts).alignment;
+    const status = alignment.status.map((st, i) =>
+      primary.status[i] === 'missing' && again.status[i] === 'correct' ? ('correct' as const) : st,
+    );
+    alignment = { ...alignment, status };
+  }
   if (isQuranWord) alignment = applyVocabulary(alignment, isQuranWord);
   return { alignment, heard: all.slice(from), segOfHeard: segOf.slice(from) };
 }
@@ -65,6 +79,25 @@ export function segmentsForRange(res: SessionResult, from: number, to: number): 
   const out: number[] = [];
   for (let k = sorted[0]; k <= sorted[sorted.length - 1]; k++) out.push(k);
   return out;
+}
+
+/** Abschnitte, an die ausgelassene Wörter grenzen – Kandidaten für das Nachhören in zwei Hälften. */
+export function segmentsWithGaps(res: SessionResult): number[] {
+  const { alignment: a, segOfHeard } = res;
+  const set = new Set<number>();
+  a.status.forEach((s, i) => {
+    if (s !== 'missing') return;
+    for (const dir of [-1, 1]) {
+      for (let k = i + dir; k >= 0 && k < a.status.length; k += dir) {
+        if (a.heardAt[k] >= 0) {
+          const seg = segOfHeard[a.heardAt[k]];
+          if (seg !== undefined) set.add(seg);
+          break;
+        }
+      }
+    }
+  });
+  return [...set].sort((x, y) => x - y);
 }
 
 /** Abschnitte mit falschen, ausgelassenen oder zusätzlichen Wörtern – Kandidaten für die Gegenprobe. */
