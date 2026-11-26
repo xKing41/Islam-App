@@ -25,13 +25,21 @@ import { type Decoder, getWhisper, releaseWhisper, selfTest, transcribePcm } fro
 import { ACCURACY } from '@/lib/recite/accuracy';
 import { downloadModel, isModelReady, MODEL } from '@/lib/recite/model';
 import { concat, resampleTo16k, Segmenter, splitPoint } from '@/lib/recite/segmenter';
-import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags, segmentsWithGaps } from '@/lib/recite/session';
+import {
+  evaluateSession,
+  finishAlignment,
+  pairsToMerge,
+  pcmToWav,
+  segmentsForRange,
+  segmentsWithFlags,
+  segmentsWithGaps,
+} from '@/lib/recite/session';
 import { isQuranWord } from '@/lib/recite/vocab';
 import { useQuranStore } from '@/store/quran';
 import { useSettings } from '@/store/settings';
 
 type Phase = 'idle' | 'loading' | 'listening' | 'finishing' | 'done';
-type Seg = { pcm: Int16Array; tokens: Token[]; alt?: Token[]; split?: Token[] };
+type Seg = { pcm: Int16Array; tokens: Token[]; alt?: Token[]; split?: Token[]; withNext?: Token[] };
 
 /**
  * Hauptdurchgang und Gegenprobe der Erkennung. Markiert der Hauptdurchgang ein Wort, wird der Abschnitt
@@ -124,6 +132,7 @@ export default function ReciteScreen() {
   const segsRef = useRef<Seg[]>(params.demo === '1' ? DEMO_SEGMENTS : []);
   const altTried = useRef<Set<number>>(new Set());
   const splitTried = useRef<Set<number>>(new Set());
+  const mergeTried = useRef<Set<number>>(new Set());
   const lastLevel = useRef(0);
   const recFile = useRef<File | null>(null);
 
@@ -146,6 +155,7 @@ export default function ReciteScreen() {
     segsRef.current = [];
     altTried.current = new Set();
     splitTried.current = new Set();
+    mergeTried.current = new Set();
     setSegs([]);
     setError(null);
     setDemo(false);
@@ -197,7 +207,23 @@ export default function ReciteScreen() {
           setSegs(segsRef.current);
           continue;
         }
-        // 3) Nachhören in zwei Hälften, wo Wörter zu fehlen scheinen (die Erkennung überspringt in
+        // 3) Zusammenhören: markierte Wörter an einer Schnittstelle – die beiden Abschnitte gemeinsam
+        //    erkennen (ganze Verse erkennt das Modell fast fehlerfrei); nur, solange noch Abschnitte folgen
+        //    konnten oder die Aufnahme beendet ist, und höchstens 25 s Audio
+        const segsNow = segsRef.current;
+        const p = pairsToMerge(res, segsNow.length).find(
+          (x) => !mergeTried.current.has(x) && x + 1 < segsNow.length && segsNow[x].pcm.length + segsNow[x + 1].pcm.length <= 25 * 16000,
+        );
+        if (p !== undefined) {
+          mergeTried.current.add(p);
+          setChecking(true);
+          const text = await transcribePcm(concat([segsNow[p].pcm, segsNow[p + 1].pcm]), PRIMARY);
+          console.log('[Rezitation] Zusammenhören:', text);
+          segsRef.current = segsRef.current.map((x, i) => (i === p ? { ...x, withNext: tokenize(text) } : x));
+          setSegs(segsRef.current);
+          continue;
+        }
+        // 4) Nachhören in zwei Hälften, wo Wörter zu fehlen scheinen (die Erkennung überspringt in
         //    längeren Abschnitten manchmal eine Phrase)
         const g = segmentsWithGaps(res).find((x) => !splitTried.current.has(x));
         if (g === undefined) break;
@@ -286,6 +312,7 @@ export default function ReciteScreen() {
     segsRef.current = [];
     altTried.current = new Set();
     splitTried.current = new Set();
+    mergeTried.current = new Set();
     setSegs([]);
     setDemo(false);
     queue.current = [];

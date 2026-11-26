@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 
 import { alignWords, applyVocabulary, combineOpinions, stripFormulas, summarize, tokenize, toWords, vowelHints, vowelPattern } from '../src/lib/recite/align';
 import { resampleTo16k, Segmenter } from '../src/lib/recite/segmenter';
-import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags, segmentsWithGaps } from '../src/lib/recite/session';
+import { evaluateSession, finishAlignment, pairsToMerge, pcmToWav, segmentsForRange, segmentsWithFlags, segmentsWithGaps } from '../src/lib/recite/session';
 
 const root = join(__dirname, '..');
 const sura = (n: number) => JSON.parse(readFileSync(join(root, `src/data/quran/suras/${String(n).padStart(3, '0')}.json`), 'utf8'));
@@ -297,6 +297,20 @@ describe('Sitzung (mehrere Abschnitte)', () => {
     // ein falsches Wort bleibt falsch, auch wenn das Nachhören es richtig hört
     const wrong = evaluateSession(exp, [{ tokens: tokenize('فان مع العسر يسرا ان مع العسر يسرا فاذا فرغت فارغب'), split: tokenize('فان مع العسر يسرا ان مع العسر يسرا فاذا فرغت فانصب') }], opts);
     assert.equal(wrong.alignment.status[10], 'wrong');
+  });
+
+  it('hört an einer Schnittstelle zwei Abschnitte zusammen – Fehler werden höchstens unsicher', () => {
+    // Schnitt mitten im Vers: das Wort an der Schnittstelle wurde verhört, ein Wort doppelt gehört
+    const exp = toWords('الحمد لله رب العالمين الرحمن الرحيم مالك يوم الدين');
+    const segs = [{ tokens: tokenize('الحمد لله رب العالمين الرحمن') }, { tokens: tokenize('الرحمن الرحين مالك يوم الدين') }];
+    const before = evaluateSession(exp, segs, opts);
+    assert.equal(before.alignment.status[5], 'wrong');
+    assert.deepEqual(pairsToMerge(before, 2), [0]);
+    const merged = evaluateSession(exp, [{ ...segs[0], withNext: tokenize('الحمد لله رب العالمين الرحمن الرحيم مالك يوم الدين') }, segs[1]], opts);
+    assert.equal(merged.alignment.status[5], 'uncertain'); // nie „richtig“ – bitte anhören
+    // ein echter Fehler bleibt rot, wenn auch die gemeinsame Erkennung ihn hört
+    const real = evaluateSession(exp, [{ ...segs[0], withNext: tokenize('الحمد لله رب العالمين الرحمن الرحين مالك يوم الدين') }, segs[1]], opts);
+    assert.equal(real.alignment.status[5], 'wrong');
   });
 
   it('meldet einen angefangenen, aber nicht beendeten Vers als unvollständig', () => {

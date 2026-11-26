@@ -119,6 +119,27 @@ if (V.includes('greedy') && V.includes('beam5')) {
   // so arbeitet die App: schnell erkennen, markierte Stellen gründlich gegenprüfen, Wortschatz-Regel
   configs.push({ m: strict('greedy', 'beam5', true), variants: ['greedy', 'beam5'] });
 }
+if (V.includes('greedy') && V.includes('beam5') && V.includes('greedy-split') && V.includes('greedy-merge')) {
+  // … und Zusammenhören zweier Abschnitte bei Markierungen an der Schnittstelle (so arbeitet die App)
+  configs.push({
+    m: {
+      name: 'streng, greedy + Gegenprobe beam5 + Nachhören + Zusammenhören + Wortschatz',
+      run: (expected, _texts, s, a, fo, key) => {
+        const segs = (data[key!]?.segments ?? []).map((x) => {
+          const m = x?.text['greedy-merge'];
+          return {
+            tokens: tokenize(x?.text.greedy ?? ''),
+            alt: tokenize(x?.text.beam5 ?? ''),
+            split: tokenize(x?.text['greedy-split'] ?? ''),
+            ...(m ? { withNext: tokenize(m) } : {}),
+          };
+        });
+        return evaluateSession(expected, segs, fo ?? formulaOpts(s, a), (w) => vocab.has(w)).alignment;
+      },
+    },
+    variants: ['greedy', 'beam5', 'greedy-split', 'greedy-merge'],
+  });
+}
 if (V.includes('greedy') && V.includes('beam5') && V.includes('greedy-split')) {
   // … und zusätzlich Nachhören in zwei Hälften (wie die App bei scheinbar ausgelassenen Wörtern)
   configs.push({

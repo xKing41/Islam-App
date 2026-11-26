@@ -8,7 +8,7 @@ on:
     inputs:
       variants:
         description: Suchverfahren (JSON-Liste)
-        default: '["greedy","beam5","greedy-split"]'
+        default: '["greedy","beam5","greedy-split","greedy-merge"]'
       seg:
         description: Abweichende Abschnitts-Einstellungen für transcribe.ts (leer = wie in der App)
         default: ''

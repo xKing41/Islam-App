@@ -233,11 +233,31 @@ async function main() {
   await Promise.all(
     VARIANTS.map(async (variant) => {
       const split = variant.endsWith('-split');
-      const base = split ? variant.slice(0, -6) : variant;
+      const merge = variant.endsWith('-merge');
+      const base = split ? variant.slice(0, -6) : merge ? variant.slice(0, -6) : variant;
       const todo: string[] = [];
       const halves = new Map<string, { f: string; part: 0 | 1 }>();
+      const merged = new Map<string, string>();
       for (const [f, w] of where) {
         if (cache[w.key]?.segments[w.k]?.text[variant] !== undefined) continue;
+        if (merge) {
+          // Zusammenhören: Abschnitt k mit k+1 gemeinsam (höchstens 25 s), sonst leer
+          const next = join(dirname(f), `${w.k + 1}.wav`);
+          const pcmA = readWav(f);
+          const pcmB = w.k + 1 < w.n && existsSync(next) ? readWav(next) : null;
+          if (!pcmB || pcmA.length + pcmB.length > 25 * 16000) {
+            ensure(f, w).segments[w.k].text[variant] = '';
+            continue;
+          }
+          const both = new Int16Array(pcmA.length + pcmB.length);
+          both.set(pcmA, 0);
+          both.set(pcmB, pcmA.length);
+          const mf = f.replace(/\.wav$/, '-m.wav');
+          writeWav(mf, both);
+          merged.set(mf, f);
+          todo.push(mf);
+          continue;
+        }
         if (!split) {
           todo.push(f);
           continue;
@@ -257,7 +277,12 @@ async function main() {
       console.log(`${variant}: ${todo.length} Dateien`);
       const parts = new Map<string, [string?, string?]>();
       await runRtool(todo, base, (file, text) => {
-        if (!split) {
+        if (merge) {
+          const f = merged.get(file);
+          if (!f) return;
+          const w = where.get(f)!;
+          ensure(f, w).segments[w.k].text[variant] = text;
+        } else if (!split) {
           const w = where.get(file);
           if (!w) return;
           ensure(file, w).segments[w.k].text[variant] = text;

@@ -4,7 +4,7 @@
  *
  * Rein rechnerisch, ohne React-Native-Abhängigkeiten (mit Unit-Tests geprüft).
  */
-import { alignRecitation, applyVocabulary, combineOpinions, type Alignment, type FormulaOptions, type Token } from './align';
+import { alignRecitation, applyVocabulary, combineOpinions, tokenize, type Alignment, type FormulaOptions, type Token } from './align';
 
 export type RecitedSegment = {
   /** Erkannte Wörter (Hauptdurchgang) */
@@ -13,6 +13,8 @@ export type RecitedSegment = {
   alt?: Token[];
   /** Nachhören in zwei Hälften – nur für Abschnitte, in denen Wörter zu fehlen scheinen */
   split?: Token[];
+  /** Zusammenhören: dieser und der nächste Abschnitt gemeinsam erkannt (bei Markierungen an der Schnittstelle) */
+  withNext?: Token[];
 };
 
 export type SessionResult = {
@@ -56,8 +58,96 @@ export function evaluateSession(
     );
     alignment = { ...alignment, status };
   }
+  if (segments.some((s) => s.withNext)) alignment = applyMerged(expected, segments, opts, alignment, segOf.slice(from));
   if (isQuranWord) alignment = applyVocabulary(alignment, isQuranWord);
   return { alignment, heard: all.slice(from), segOfHeard: segOf.slice(from) };
+}
+
+/**
+ * Für ein markiertes Wort: das Abschnittspaar (p, p+1), dessen gemeinsame Erkennung es klären kann –
+ * der Nachbar auf der Seite, auf der das Wort im Abschnitt liegt (vorne → mit dem vorigen, hinten → mit
+ * dem nächsten Abschnitt). null, wenn es keinen Nachbarn gibt.
+ */
+export function pairForWord(a: Alignment, segOfHeard: number[], segCount: number, i: number, heardIndex?: number): number | null {
+  let h = heardIndex ?? a.heardAt[i];
+  if (h === undefined || h < 0) {
+    // ausgelassenes Wort: nächstes zugeordnetes Wort davor oder danach
+    for (let d = 1; d < a.heardAt.length && (h === undefined || h < 0); d++) {
+      for (const k of [i - d, i + d]) {
+        if (k >= 0 && k < a.heardAt.length && a.heardAt[k] >= 0) {
+          h = a.heardAt[k];
+          break;
+        }
+      }
+    }
+  }
+  if (h === undefined || h < 0) return null;
+  const seg = segOfHeard[h];
+  if (seg === undefined) return null;
+  let first = h;
+  while (first > 0 && segOfHeard[first - 1] === seg) first--;
+  let last = h;
+  while (last + 1 < segOfHeard.length && segOfHeard[last + 1] === seg) last++;
+  const front = h - first < last - h;
+  if (front && seg > 0) return seg - 1;
+  if (!front && seg + 1 < segCount) return seg;
+  if (seg > 0) return seg - 1;
+  return seg + 1 < segCount ? seg : null;
+}
+
+/**
+ * Zusammenhören: Ein Schnitt zwischen zwei Abschnitten mitten im Vers ist die häufigste Ursache für
+ * Fehlalarme (ganze Verse in einem Stück erkennt das Modell fast fehlerfrei). Wurden zwei Abschnitte
+ * gemeinsam noch einmal erkannt und hört die Erkennung dort das erwartete Wort, gilt: „ausgelassen“
+ * entfällt, „falsch“ wird zu „unsicher“ (nie zu „richtig“ – echte Fehler bleiben sichtbar), ein nur
+ * durch den Schnitt doppelt gehörtes zusätzliches Wort entfällt.
+ */
+function applyMerged(expected: string[], segments: RecitedSegment[], opts: FormulaOptions, a: Alignment, segOfHeard: number[]): Alignment {
+  const cache = new Map<number, Alignment>();
+  const pairAlign = (p: number) => {
+    if (!cache.has(p)) {
+      const toks: Token[] = [];
+      segments.forEach((s, k) => {
+        if (k === p) toks.push(...(s.withNext ?? []));
+        else if (k !== p + 1) toks.push(...s.tokens);
+      });
+      cache.set(p, alignRecitation(expected, toks, opts).alignment);
+    }
+    return cache.get(p)!;
+  };
+  const status = a.status.slice();
+  a.status.forEach((st, i) => {
+    if (st !== 'wrong' && st !== 'missing') return;
+    const p = pairForWord(a, segOfHeard, segments.length, i);
+    if (p === null || !segments[p]?.withNext) return;
+    if (pairAlign(p).status[i] !== 'correct') return;
+    status[i] = st === 'missing' ? 'correct' : 'uncertain';
+  });
+  const extras = a.extras.filter((e) => {
+    if (e.kind !== 'extra') return true;
+    const p = pairForWord(a, segOfHeard, segments.length, -1, e.heardIndex);
+    if (p === null || !segments[p]?.withNext) return true;
+    const w = tokenize(e.word)[0]?.norm;
+    return pairAlign(p).extras.some((x) => x.kind === 'extra' && Math.abs(x.before - e.before) <= 1 && tokenize(x.word)[0]?.norm === w);
+  });
+  return { ...a, status, extras };
+}
+
+/** Abschnittspaare, deren gemeinsame Erkennung markierte Wörter klären könnte – Kandidaten fürs Zusammenhören. */
+export function pairsToMerge(res: SessionResult, segCount: number): number[] {
+  const { alignment: a, segOfHeard } = res;
+  const set = new Set<number>();
+  a.status.forEach((st, i) => {
+    if (st !== 'wrong' && st !== 'missing') return;
+    const p = pairForWord(a, segOfHeard, segCount, i);
+    if (p !== null) set.add(p);
+  });
+  for (const e of a.extras) {
+    if (e.kind !== 'extra') continue;
+    const p = pairForWord(a, segOfHeard, segCount, -1, e.heardIndex);
+    if (p !== null) set.add(p);
+  }
+  return [...set].sort((x, y) => x - y);
 }
 
 /** Abschnitte, die zu erwarteten Wörtern im Bereich [from, to) gehören (inkl. zusätzlicher Wörter dort). */
