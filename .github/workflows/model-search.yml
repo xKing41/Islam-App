@@ -1,0 +1,35 @@
+# Sucht auf Hugging Face nach Spracherkennungsmodellen für Koran-Rezitation (Kandidaten für „Rezitation
+# prüfen“) und listet sie mit Lizenz, Größe und Downloads im Protokoll auf.
+name: Modellsuche
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Suchen
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.parse
+          seen = {}
+          for q in ['quran', 'qur', 'tarteel', 'tajweed', 'recitation', 'ayah']:
+              url = 'https://huggingface.co/api/models?' + urllib.parse.urlencode({'search': q, 'pipeline_tag': 'automatic-speech-recognition', 'sort': 'downloads', 'direction': -1, 'limit': 60, 'full': 'true'})
+              try:
+                  data = json.load(urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'IslamApp-Search/1.0'}), timeout=60))
+              except Exception as e:
+                  print('Fehler', q, e); continue
+              for m in data:
+                  seen[m['id']] = m
+          rows = sorted(seen.values(), key=lambda m: -(m.get('downloads') or 0))
+          for m in rows[:80]:
+              tags = m.get('tags', [])
+              lic = next((t.split(':', 1)[1] for t in tags if t.startswith('license:')), '?')
+              base = next((t.split(':', 1)[1] for t in tags if t.startswith('base_model:') and t.count(':') == 1), '')
+              lib = m.get('library_name', '')
+              print(f"{m['id']} | dl={m.get('downloads')} likes={m.get('likes')} | lic={lic} | lib={lib} | base={base} | {m.get('lastModified','')[:10]}")
+          PY

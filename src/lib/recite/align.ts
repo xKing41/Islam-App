@@ -312,6 +312,16 @@ export function alignWords(expected: string[], heardIn: (string | Token)[]): Ali
     nextInTime = mv;
   }
 
+  // Echo: ein zusätzliches Wort direkt nach einem Wort, dem es fast gleicht („الذِّكْرِ ذَكْرِ“) – ein
+  // angesetztes Wort oder ein Doppel-Hören der Erkennung, kein eingefügtes Wort.
+  for (const e of extras) {
+    if (e.kind !== 'extra' || e.before < 1) continue;
+    const prev = e.before - 1;
+    const w = hf[e.heardIndex];
+    const echo = similarity(exp[prev], w) >= 0.75 || (w.length >= 3 && exp[prev].endsWith(w));
+    if (heardAt[prev] === e.heardIndex - 1 && status[prev] === 'correct' && echo) e.kind = 'corrected';
+  }
+
   // Selbstkorrektur ohne Neuansatz: ein zusätzliches Wort, das dem unmittelbar folgenden (richtig
   // erkannten) erwarteten Wort ähnelt – „نرزقهم نرزقكم“.
   for (const e of extras) {
