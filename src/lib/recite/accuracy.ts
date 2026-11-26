@@ -14,6 +14,6 @@ export const ACCURACY = {
   redPerWordKnown: 0.19,
   /** Ganze Suren am Stück von 8 Rezitatoren, die das Modell nicht kennt (mp3quran.net) */
   surahs: 88,
-  redPerWordUnknown: 2.61,
-  yellowPerWordUnknown: 2.75,
+  redPerWordUnknown: 2.16,
+  yellowPerWordUnknown: 2.65,
 };

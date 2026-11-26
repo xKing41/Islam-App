@@ -98,10 +98,28 @@ Bei einzelnen Hadithen gibt HadeethEnc die Einstufung oder Quelle nur auf Arabis
 |---|---|
 | Modell | [tarteel-ai/whisper-base-ar-quran](https://huggingface.co/tarteel-ai/whisper-base-ar-quran) von Tarteel AI: ein Whisper-Modell, das auf Koran-Rezitationen trainiert wurde (Apache-2.0) |
 | Umwandlung | Automatisch per GitHub-Workflow `.github/workflows/model.yml`: whisper.cpp v1.9.3 (MIT), quantisiert auf q8_0 (82 MB), Release `modell-quran-v2` |
-| Messung | 159 Verse von drei Rezitatoren (Alafasy, Husary, Minshawi; EveryAyah) gegen den Tanzil-Text: **1,75 % Wortfehlerrate** bei exaktem Wortvergleich, also etwa 98 von 100 Wörtern richtig erkannt. Das kleinere Modell whisper-tiny lag bei 9,2 % und wird deshalb nicht verwendet. Die App erlaubt zusätzlich kleine Schreibunterschiede. |
 | Einbindung | whisper.rn (MIT); Mikrofon über expo-audio |
-| Datenschutz | Die Erkennung läuft vollständig auf dem Handy. Die Stimme wird nicht gespeichert und nicht übertragen. Aus dem Internet geladen wird nur einmalig das Modell (aus dem GitHub-Release `modell-quran-v2`, mit Prüfsumme). |
-| Grenzen | Geprüft wird der Wortlaut (falsche, ausgelassene und zusätzliche Wörter). Tajwid-Regeln wie Dehnungen, Ghunna oder die Aussprache einzelner Buchstaben werden **nicht** bewertet. |
+| Datenschutz | Die Erkennung läuft vollständig auf dem Handy. Die Stimme wird nicht gespeichert und nicht übertragen. Aus dem Internet geladen wird nur einmalig das Modell (aus dem GitHub-Release, mit Prüfsumme). |
+
+**So prüft die App** (`src/lib/recite/`):
+
+- **Streng, Buchstabe für Buchstabe:** Jedes erkannte Wort wird mit dem Wort aus dem Tanzil-Text verglichen. Toleriert werden nur Schreibvarianten ohne Einfluss auf die Aussprache (Vokalzeichen, Hamza-Träger, Alif-Formen, Ta marbuta/Ha, Alif maqsura/Ya). Schon ein anderer Buchstabe ist ein Fehler (z. B. „نرزقهم“ statt „نرزقكم“, „يعلمون“ statt „تعلمون“, „فقال“ statt „قال“).
+- **Wiederholungen und Neuansätze** sind kein Fehler: Wer zurückspringt und noch einmal ansetzt, wird nicht bestraft. Für jedes Wort zählt der letzte Durchgang; ein früherer Versprecher erscheint als „selbst korrigiert“.
+- **Isti‘adha, Basmala vor einer Sure, „Sadaqa llahu l-‘azim“ und „Amin“** nach Al-Fatiha werden übergangen. Bei Al-Fatiha ist die Basmala freiwillig (in der hanafitischen Schule wird sie still gesprochen).
+- **Unsicher statt falsch (gelb):** (1) wenn eine zweite, gründlichere Erkennung (Strahlsuche) an dieser Stelle das richtige Wort hört, (2) wenn das gehörte Wort so nirgends im Koran vorkommt – wer sich beim Auswendig-Rezitieren vertut, sagt fast immer ein anderes echtes Koranwort; ein Nicht-Wort ist meist ein Hörfehler der Erkennung. Der Wortschatz (14.648 Wortformen) wird aus dem Tanzil-Text erzeugt (`scripts/build-quran-vocab.mjs`).
+- **Nachhören:** Scheint mitten in einem Abschnitt eine Phrase zu fehlen, hört die App den Abschnitt noch einmal in zwei Hälften ab. Die Erkennung überspringt sonst manchmal wiederholte Phrasen (z. B. 94:5–6). Das ändert nur Auslassungen, nie falsche Wörter.
+- **Abschnitte** entstehen an Pausen (ab 0,5 s); sehr lange Passagen werden nur an einer Atempause geteilt, nie mitten im Wort.
+- **Vokal-Hinweise (zuschaltbar):** Vokalzeichen werden nur als Hinweis verglichen (gemessen: 99,4 % Übereinstimmung bei korrekter Rezitation unbekannter Rezitatoren – für ein Urteil „falsch“ zu wenig).
+
+**Messung** (`scripts/recite-eval/`, Workflows „Auswertung Rezitation prüfen“; Berichte und Rohdaten am Release `rezitation-auswertung`). Erkannt wird mit genau dem whisper.cpp der App, abgeglichen mit genau dem Code der App:
+
+| Test | Ergebnis |
+|---|---|
+| **Verwechslungen ähnlicher Verse** (Mutashabihat): Aufnahme eines Verses, geprüft gegen den Text eines Verses, der sich nur in 1–2 Wörtern unterscheidet (406 Verspaare aus dem Korantext, 3 Rezitatoren, 3.936 Abweichungen) | **99,95 % gefunden**, davon Ein-Buchstaben-Unterschiede 99,72 %, andere Wörter, ausgelassene und eingefügte Wörter je 100 % (vorher, mit 75-%-Ähnlichkeit: 94,97 %, Ein-Buchstaben-Unterschiede nur 73 %) |
+| **Korrekte Rezitation, bekannte Rezitatoren** (1.365 Verse von Alafasy, Husary, Minshawi; EveryAyah) | 0,19 % der Wörter zu Unrecht rot, 0,40 % gelb; **99,27 % der Verse ganz ohne rote Markierung** |
+| **Korrekte Rezitation, unbekannte Rezitatoren** (88 ganze Suren am Stück von 8 Rezitatoren, die nicht in den Trainingsdaten sind; mp3quran.net) | 2,16 % der Wörter zu Unrecht rot, 2,65 % gelb; 47 von 88 Suren ganz ohne rote Markierung (vor den Verbesserungen: 6,4 % rot) |
+
+**Ehrliche Grenzen:** Das Erkennungsmodell wurde mit den EveryAyah-Rezitatoren trainiert und versteht unbekannte Stimmen – also auch deine – schlechter. Bei Rot oder Gelb deshalb die eigene Aufnahme anhören („Meine Aufnahme“) und mit dem Vorbild vergleichen. Tajwid-Regeln wie Dehnungen, Ghunna oder die genaue Aussprache einzelner Laute werden **nicht** bewertet.
 
 ## 6. Gebetszeiten, Qibla & Hijri-Kalender: Berechnung auf dem Gerät
 
