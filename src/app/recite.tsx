@@ -591,6 +591,14 @@ export default function ReciteScreen() {
                         </Pressable>
                       ) : null}
                     </View>
+                    {!demo ? (
+                      <Pressable onPress={() => select(sura, m.aya)} style={styles.listen} accessibilityRole="button" hitSlop={6}>
+                        <Icon name="restart" size={16} color={theme.primary} />
+                        <AppText variant="caption" color="primary" style={{ fontWeight: '600' }}>
+                          {t.recite.retryFrom}
+                        </AppText>
+                      </Pressable>
+                    ) : null}
                     {m.notes.map((n) => (
                       <AppText
                         key={n.key}

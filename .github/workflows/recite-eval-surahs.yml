@@ -1,0 +1,96 @@
+# Wie „Auswertung Rezitation prüfen“, aber mit ganzen Suren am Stück von Rezitatoren, die NICHT auf
+# EveryAyah sind (also nicht in den Trainingsdaten des Modells) – Quelle mp3quran.net. Misst Falschalarme
+# unter realistischeren Bedingungen: unbekannte Stimmen, durchgehende Rezitation, Pausen-Erkennung der App.
+name: Auswertung Rezitation prüfen (ganze Suren)
+
+on:
+  workflow_dispatch:
+    inputs:
+      variants:
+        description: Suchverfahren (JSON-Liste)
+        default: '["greedy","beam5"]'
+
+permissions:
+  contents: write
+
+jobs:
+  transcribe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(inputs.variants) }}
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Werkzeuge
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+          npm ci --no-audit --no-fund
+          scripts/recite-eval/build-rtool.sh rtool
+          curl -sfL -o model.bin https://github.com/${{ github.repository }}/releases/download/modell-quran-v2/ggml-quran-base-q8_0.bin
+          echo "72194195f7d280adebec57acf2c6e01e209484322ec1cec21c275a3c0b1e3d77  model.bin" | sha256sum -c
+      - name: Erkennen
+        run: |
+          node scripts/recite-eval/mp3quran-jobs.mjs > jobs.json
+          npx tsx scripts/recite-eval/transcribe.ts --rtool ./rtool --model model.bin --work work \
+            --jobs jobs.json --variants ${{ matrix.variant }} --threads 4 --shard ${{ matrix.shard }}/4
+          cp work/transcripts.json transcripts-${{ matrix.variant }}-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: suren-${{ matrix.variant }}-${{ matrix.shard }}
+          path: transcripts-*.json
+
+  score:
+    needs: transcribe
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: suren-*
+          merge-multiple: true
+          path: parts
+      - name: Zusammenführen und bewerten
+        run: |
+          node -e "
+            const fs = require('fs');
+            const all = {};
+            for (const f of fs.readdirSync('parts')) {
+              const d = JSON.parse(fs.readFileSync('parts/' + f, 'utf8'));
+              for (const [k, v] of Object.entries(d)) {
+                const e = (all[k] ??= { segments: [] });
+                v.segments.forEach((s, i) => {
+                  if (!s) return;
+                  const t = (e.segments[i] ??= { ms: s.ms, text: {} });
+                  Object.assign(t.text, s.text);
+                });
+              }
+            }
+            fs.writeFileSync('transcripts-suren.json', JSON.stringify(all));
+            console.log(Object.keys(all).length + ' Aufnahmen');
+          "
+          npx tsx scripts/recite-eval/score.ts transcripts-suren.json --out eval-report-suren.md --examples 40
+          cat eval-report-suren.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: rezitation-auswertung
+          name: Auswertung „Rezitation prüfen“
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          files: |
+            transcripts-suren.json
+            eval-report-suren.md

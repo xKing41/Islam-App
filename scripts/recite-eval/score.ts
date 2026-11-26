@@ -78,18 +78,20 @@ function lev(a: string, b: string) {
   return prev[b.length];
 }
 
-type Matcher = { name: string; run: (expected: string[], heardText: string[], s: number, a: number) => Alignment };
+type FO = { expectedStartsWithBasmala: boolean; endsWithFatiha: boolean };
+type Matcher = { name: string; run: (expected: string[], heardText: string[], s: number, a: number, fo?: FO) => Alignment };
 
 const formulaOpts = (s: number, a: number) => ({ expectedStartsWithBasmala: s === 1 && a === 1, endsWithFatiha: s === 1 && a === 7 });
 
 function strict(variant: string, second?: string): Matcher {
   return {
     name: second ? `streng, ${variant} + Gegenprobe ${second}` : `streng, ${variant}`,
-    run: (expected, texts, s, a) => {
-      const heard = stripFormulas(tokenize(texts[0]), formulaOpts(s, a));
+    run: (expected, texts, s, a, fo) => {
+      const opts = fo ?? formulaOpts(s, a);
+      const heard = stripFormulas(tokenize(texts[0]), opts);
       const primary = alignWords(expected, heard);
       if (!second) return primary;
-      const alt = stripFormulas(tokenize(texts[1]), formulaOpts(s, a));
+      const alt = stripFormulas(tokenize(texts[1]), opts);
       return combineOpinions(primary, alignWords(expected, alt));
     },
   };
@@ -129,12 +131,13 @@ const pairs: { a: [number, number]; b: [number, number] }[] = JSON.parse(
 ).filter((p: { a: number[]; b: number[] }) => !(p.a[0] === 1 && p.a[1] === 1) && !(p.b[0] === 1 && p.b[1] === 1));
 
 const report: string[] = ['# Auswertung „Rezitation prüfen“', ''];
+const hasVerses = Object.keys(data).some((k) => /\/\d{6}$/.test(k));
 report.push(`Aufnahmen: ${Object.keys(data).length} (EveryAyah: ${reciters.join(', ')}), Mutashabihat-Paare: ${pairs.length}`, '');
 report.push('| Verfahren | Falschalarme je Wort | Verse ganz ohne Fehlalarm | unsicher je Wort | Erkannte Verwechslungen | davon nur „unsicher“ | Buchstabe | Wort | ausgelassen | eingefügt |');
 report.push('|---|---|---|---|---|---|---|---|---|---|');
 
 const examples: Record<string, string[]> = {};
-for (const { m, variants } of configs) {
+for (const { m, variants } of hasVerses ? configs : []) {
   // 1) Falschalarme auf korrekten Rezitationen
   let words = 0;
   let flagged = 0;
@@ -212,6 +215,47 @@ for (const { m, variants } of configs) {
     `| ${m.name} | ${pct(flagged, words)} (${flagged}/${words}) | ${pct(clean, verses)} | ${pct(uncertain, words)} | ${pct(det.found, det.total)} (${det.found}/${det.total}) | ${det.onlyUncertain} | ${k('letter')} | ${k('word')} | ${k('omit')} | ${k('insert')} |`,
   );
   console.log(report[report.length - 1]);
+}
+
+// 3) Ganze Suren am Stück (fremde Rezitatoren, nicht in den Trainingsdaten): nur Falschalarme
+const suraKeys = Object.keys(data).filter((k) => /\/sura\d{3}$/.test(k));
+if (suraKeys.length) {
+  const recs = [...new Set(suraKeys.map((k) => k.split('/')[0]))];
+  report.push('', '## Ganze Suren am Stück – Rezitatoren, die das Modell nicht kennt', '');
+  report.push(`${suraKeys.length} Aufnahmen (${recs.join(', ')}), Quelle mp3quran.net`, '');
+  report.push('| Verfahren | Falschalarme je Wort | unsicher je Wort | Suren ohne Fehlalarm |');
+  report.push('|---|---|---|---|');
+  for (const { m, variants } of configs) {
+    if (m.name.startsWith('alt')) continue;
+    let words = 0;
+    let flagged = 0;
+    let uncertain = 0;
+    let clean = 0;
+    let n = 0;
+    const fa: string[] = (examples[`Fehlalarme ganze Suren – ${m.name}`] = []);
+    for (const key of suraKeys) {
+      if (!complete(key, variants)) continue;
+      const sNum = Number(key.slice(-3));
+      const meta = JSON.parse(readFileSync(join(ROOT, 'src/data/quran/meta.json'), 'utf8')).suras[sNum - 1];
+      const exp: string[] = [];
+      for (let a = 1; a <= meta.ayas; a++) exp.push(...verseWords(sNum, a).norm);
+      const texts = variants.map((v) => textOf(key, v));
+      const al = m.run(exp, texts, sNum, 1, { expectedStartsWithBasmala: sNum === 1, endsWithFatiha: sNum === 1 });
+      const sum = summarize(al);
+      const bad = sum.wrong + sum.missing + sum.extra + (sum.total - sum.reached);
+      words += sum.total;
+      flagged += bad;
+      uncertain += sum.uncertain;
+      n++;
+      if (bad === 0) clean++;
+      al.status.forEach((st, i) => {
+        if ((st === 'wrong' || st === 'missing') && fa.length < EXAMPLES) fa.push(`- ${key} Wort ${i + 1}: ${st} „${exp[i]}“${al.heardFor[i] ? ` – erkannt „${al.heardFor[i]}“` : ''}`);
+      });
+    }
+    const pct = (x: number, y: number) => (y ? `${((100 * x) / y).toFixed(2)} %` : '–');
+    report.push(`| ${m.name} | ${pct(flagged, words)} (${flagged}/${words}) | ${pct(uncertain, words)} | ${clean}/${n} |`);
+    console.log(report[report.length - 1]);
+  }
 }
 
 /** Für eine Ersetzung an Index k in b: zugehöriger Index in a (über das gleiche Editierskript). */

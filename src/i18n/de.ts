@@ -287,6 +287,7 @@ export const de = {
     position: (i: number, n: number) => `${i} von ${n}`,
   },
   recite: {
+    retryFrom: 'Ab diesem Vers neu üben',
     selfTestResult2: (text: string, s1: string, s2: string, ok: number, n: number) =>
       `Erkannt: „${text}“ · ${ok}/${n} Wörter richtig · schnell ${s1} s, gründlich ${s2} s`,
     demo: 'Beispiel ansehen',

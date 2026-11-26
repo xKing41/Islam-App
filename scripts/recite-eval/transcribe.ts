@@ -5,7 +5,7 @@
  *
  *   npx tsx scripts/recite-eval/transcribe.ts --rtool ./rtool --model ggml-quran-base-q8_0.bin --work eval-work \
  *     [--reciters Husary_128kbps,Alafasy_128kbps] [--variants greedy,beam5] [--threads 4] [--shard 0/2]
- *     [--surahs <url-vorlage> --list reciter:sura,…]
+ *     [--surahs <url-vorlage> --list reciter:sura,…] [--jobs auftraege.json]
  *
  * Quellen: EveryAyah (Vers für Vers) bzw. mit --surahs ganze Suren (z. B. mp3quran.net), jeweils für
  * die Verse aus pairs.json und einige kurze Suren.
@@ -154,7 +154,10 @@ async function main() {
   // 1) Aufnahmen holen und zerlegen
   type Job = { key: string; url: string };
   const jobs: Job[] = [];
-  if (args.surahs) {
+  if (args.jobs) {
+    // fertige Auftragsliste [{ key, url }], z. B. aus mp3quran-jobs.mjs (ganze Suren)
+    jobs.push(...(JSON.parse(readFileSync(resolve(args.jobs), 'utf8')) as Job[]));
+  } else if (args.surahs) {
     // ganze Suren: --surahs "https://server.example/{reciter}/{sss}.mp3" mit --list "reciter:sura,…"
     for (const item of (args.list ?? '').split(',').filter(Boolean)) {
       const [rec, s] = item.split(':');
