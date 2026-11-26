@@ -287,6 +287,9 @@ export const de = {
     position: (i: number, n: number) => `${i} von ${n}`,
   },
   recite: {
+    accuracyTitle: 'Wie genau ist die Prüfung?',
+    accuracyText: (a: { confusionTests: number; confusionsFound: number; letterFound: number; verses: number; versesWithoutRed: number; surahs: number; redPerWordUnknown: number; yellowPerWordUnknown: number }) =>
+      `Gemessen an echten Rezitationen: Von ${a.confusionTests.toLocaleString('de-DE')} typischen Verwechslungen ähnlicher Verse erkennt die App ${a.confusionsFound.toLocaleString('de-DE')} % – auch einzelne falsche Buchstaben (${a.letterFound.toLocaleString('de-DE')} %). Bei korrekt rezitierten Versen bekannter Rezitatoren bleiben ${a.versesWithoutRed.toLocaleString('de-DE')} % ganz ohne rote Markierung. Stimmen, die das Erkennungsmodell nicht kennt (gemessen an ${a.surahs} Suren), werden schwerer verstanden: Dort markiert die App etwa ${a.redPerWordUnknown.toLocaleString('de-DE')} % der Wörter zu Unrecht rot und ${a.yellowPerWordUnknown.toLocaleString('de-DE')} % gelb. Deshalb gilt: Bei Rot oder Gelb die eigene Aufnahme anhören und mit dem Vorbild vergleichen.`,
     vowelHints: 'Vokale vergleichen (Hinweise)',
     vowelHintsSub: 'Zeigt Wörter, deren Vokale anders klangen – z. B. eine falsche Endung. Nur ein Hinweis: Die Erkennung hört Vokale nicht ganz zuverlässig.',
     vowelNote: (exp: string, heard: string) => `Vokale bei „${exp}“ anders gehört: „${heard}“ – bitte anhören`,

@@ -286,6 +286,9 @@ export const tr: Dictionary = {
     position: (i: number, n: number) => `${i} / ${n}`,
   },
   recite: {
+    accuracyTitle: 'Kontrol ne kadar doğru?',
+    accuracyText: (a: { confusionTests: number; confusionsFound: number; letterFound: number; verses: number; versesWithoutRed: number; surahs: number; redPerWordUnknown: number; yellowPerWordUnknown: number }) =>
+      `Gerçek tilavetlerle ölçüldü: Benzer ayetlerin ${a.confusionTests.toLocaleString('tr-TR')} tipik karıştırılmasından uygulama %${a.confusionsFound.toLocaleString('tr-TR')} oranında tespit ediyor – tek bir yanlış harfi bile (%${a.letterFound.toLocaleString('tr-TR')}). Bilinen kârilerin doğru okunmuş ayetlerinin %${a.versesWithoutRed.toLocaleString('tr-TR')} kadarında hiç kırmızı işaret çıkmıyor. Tanıma modelinin tanımadığı sesler (${a.surahs} sure ile ölçüldü) daha zor anlaşılıyor: Orada kelimelerin yaklaşık %${a.redPerWordUnknown.toLocaleString('tr-TR')} kadarı haksız yere kırmızı, %${a.yellowPerWordUnknown.toLocaleString('tr-TR')} kadarı sarı işaretleniyor. Bu yüzden: Kırmızı veya sarıda kendi kaydını dinle ve örnek tilavetle karşılaştır.`,
     vowelHints: 'Harekeleri karşılaştır (ipuçları)',
     vowelHintsSub: 'Harekesi farklı duyulan kelimeleri gösterir – ör. yanlış bir son hareke. Sadece ipucudur: Tanıma harekeleri tam güvenilir duymaz.',
     vowelNote: (exp: string, heard: string) => `“${exp}” kelimesinin harekeleri farklı duyuldu: “${heard}” – lütfen dinleyin`,

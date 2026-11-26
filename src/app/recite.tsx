@@ -22,6 +22,7 @@ import { getSuraMeta, SURAS, suraTitle } from '@/lib/quran/meta';
 import { normalizeArabic, normalizeLatin } from '@/lib/quran/text';
 import { alignWords, type Extra, summarize, type Token, tokenize, vowelHints, type WordStatus } from '@/lib/recite/align';
 import { type Decoder, getWhisper, releaseWhisper, selfTest, transcribePcm } from '@/lib/recite/engine';
+import { ACCURACY } from '@/lib/recite/accuracy';
 import { downloadModel, isModelReady, MODEL } from '@/lib/recite/model';
 import { concat, resampleTo16k, Segmenter, splitPoint } from '@/lib/recite/segmenter';
 import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags, segmentsWithGaps } from '@/lib/recite/session';
@@ -114,6 +115,7 @@ export default function ReciteScreen() {
   const [testResult, setTestResult] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [demo, setDemo] = useState(params.demo === '1');
+  const [accuracyOpen, setAccuracyOpen] = useState(false);
 
   const segmenter = useRef<Segmenter | null>(null);
   const queue = useRef<Int16Array[]>([]);
@@ -661,6 +663,17 @@ export default function ReciteScreen() {
         <AppText variant="caption" color="textMuted">
           {t.recite.limits}
         </AppText>
+        <Pressable onPress={() => setAccuracyOpen((o) => !o)} accessibilityRole="button" style={styles.listen} hitSlop={6}>
+          <Icon name={accuracyOpen ? 'chevron-up' : 'information-outline'} size={18} color={theme.primary} />
+          <AppText variant="caption" color="primary" style={{ fontWeight: '600' }}>
+            {t.recite.accuracyTitle}
+          </AppText>
+        </Pressable>
+        {accuracyOpen ? (
+          <AppText variant="caption" color="textSecondary" style={{ lineHeight: 19 }}>
+            {t.recite.accuracyText(ACCURACY)}
+          </AppText>
+        ) : null}
         {phase === 'idle' ? <Button title={t.recite.demo} icon="eye-outline" variant="ghost" onPress={showDemo} /> : null}
 
         {modelReady ? (
