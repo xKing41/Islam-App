@@ -144,7 +144,7 @@ export default function ReciteScreen() {
 
   /** Neue Auswahl (Sure/Startvers): bisheriges Ergebnis verwerfen. */
   function select(s: number, a: number) {
-    if (s === sura && a === startAya) return;
+    if (s === sura && a === startAya && !demo) return;
     reset();
     setSura(s);
     setStartAya(a);
@@ -262,6 +262,7 @@ export default function ReciteScreen() {
     segsRef.current = [];
     altTried.current = new Set();
     setSegs([]);
+    setDemo(false);
     queue.current = [];
     segmenter.current = new Segmenter({ sampleRate: 16000 });
     stopped.current = false;
