@@ -48,8 +48,10 @@ export class Segmenter {
     this.frame = Math.round((rate * frameMs) / 1000);
     this.silenceFrames = Math.round((opts.silenceMs ?? 500) / frameMs);
     this.minSpeechFrames = Math.round((opts.minSpeechMs ?? 350) / frameMs);
-    this.maxFrames = Math.round((opts.maxSegmentMs ?? 28000) / frameMs);
-    this.softMaxFrames = Math.round((opts.softMaxSegmentMs ?? 20000) / frameMs);
+    // Gemessen (scripts/recite-eval): ab 14 s an der nächsten Atempause teilen, spätestens bei 20 s –
+    // längere Abschnitte überschreiten das Token-Limit von Whisper (≈ 28 Wörter mit Vokalzeichen).
+    this.maxFrames = Math.round((opts.maxSegmentMs ?? 20000) / frameMs);
+    this.softMaxFrames = Math.round((opts.softMaxSegmentMs ?? 14000) / frameMs);
     this.searchFrames = Math.round(8000 / frameMs);
     this.preRollFrames = Math.round((opts.preRollMs ?? 300) / frameMs);
   }
