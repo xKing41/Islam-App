@@ -302,7 +302,7 @@ export const de = {
     extraWord: (w: string) => `zusätzlich gesagt: „${w}“`,
     uncertainExtra: (w: string) => `vielleicht zusätzlich gesagt: „${w}“ – bitte anhören`,
     correctedWord: (w: string) => `„${w}“ gesagt und sofort selbst korrigiert`,
-    repeats: (n: number) => (n === 1 ? '1 Wiederholung (kein Fehler)' : `${n} Wiederholungen (kein Fehler)`),
+    repeats: (n: number) => (n === 1 ? '1-mal neu angesetzt (kein Fehler)' : `${n}-mal neu angesetzt (kein Fehler)`),
     unfinished: (exp: string) => `„${exp}“ – Vers nicht zu Ende rezitiert`,
     checking: 'Gegenprobe …',
     uncertainCount: (n: number) => `${n} unsicher`,

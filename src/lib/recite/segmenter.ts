@@ -9,7 +9,7 @@ export type SegmenterOptions = {
   sampleRate?: number;
   /** Länge eines Analyse-Rahmens. */
   frameMs?: number;
-  /** So lange Stille beendet einen Abschnitt. */
+  /** So lange Stille beendet einen Abschnitt (Pause zwischen Versen oder zum Atemholen). */
   silenceMs?: number;
   /** Kürzere Geräusche werden ignoriert. */
   minSpeechMs?: number;
@@ -46,7 +46,7 @@ export class Segmenter {
     const rate = opts.sampleRate ?? 16000;
     const frameMs = opts.frameMs ?? 30;
     this.frame = Math.round((rate * frameMs) / 1000);
-    this.silenceFrames = Math.round((opts.silenceMs ?? 800) / frameMs);
+    this.silenceFrames = Math.round((opts.silenceMs ?? 500) / frameMs);
     this.minSpeechFrames = Math.round((opts.minSpeechMs ?? 350) / frameMs);
     this.maxFrames = Math.round((opts.maxSegmentMs ?? 28000) / frameMs);
     this.softMaxFrames = Math.round((opts.softMaxSegmentMs ?? 20000) / frameMs);
@@ -101,31 +101,56 @@ export class Segmenter {
   }
 
   /**
-   * Index des leisesten Rahmens (gleitendes Mittel über 150 ms) in den letzten 8 Sekunden – nicht in den
-   * allerletzten 300 ms, damit der neue Abschnitt nicht mitten in einem gerade begonnenen Wort anfängt.
-   * Liefert null, wenn noch weiter gesucht werden darf (vor der harten Grenze) und keine ruhige Stelle da ist.
+   * Schnittstelle für einen zu langen Abschnitt: eine echte Atempause in den letzten Sekunden – die
+   * längste Folge von Rahmen, die deutlich leiser sind als die Stimme (≥ 120 ms; Maßstab ist auch der
+   * Pegel der Stimme selbst, damit Hall in Moschee-Aufnahmen nicht stört). Nicht in den allerletzten
+   * 300 ms, damit der neue Abschnitt nicht mitten in einem gerade begonnenen Wort beginnt.
+   * Gibt es keine solche Pause, wird – erst an der harten Grenze – an der leisesten Stelle geteilt.
    */
-  private quietestPoint(): number | null {
+  private cutPoint(force: boolean): number | null {
     const n = this.current.length;
     const from = Math.max(Math.round(n / 3), n - this.searchFrames);
     const to = n - 10;
+    if (to - from < 5) return force ? n : null;
+    const voiced = this.currentRms.filter((r) => r > this.threshold()).sort((a, b) => a - b);
+    const median = voiced.length ? voiced[Math.floor(voiced.length / 2)] : 0;
+    const quiet = Math.max(this.threshold(), median * 0.25);
+    let bestStart = -1;
+    let bestLen = 0;
+    let runStart = -1;
+    for (let i = from; i < to; i++) {
+      if (this.currentRms[i] <= quiet) {
+        if (runStart < 0) runStart = i;
+        const len = i - runStart + 1;
+        if (len >= bestLen) {
+          bestLen = len;
+          bestStart = runStart;
+        }
+      } else runStart = -1;
+    }
+    if (bestLen >= 4) return bestStart + Math.floor(bestLen / 2);
+    if (!force) return null; // weiter warten – vielleicht kommt gleich eine Pause
     let best = -1;
     let bestVal = Infinity;
-    for (let i = from + 2; i < to - 2; i++) {
-      const v = (this.currentRms[i - 2] + this.currentRms[i - 1] + this.currentRms[i] + this.currentRms[i + 1] + this.currentRms[i + 2]) / 5;
-      if (v < bestVal) {
-        bestVal = v;
+    for (let i = from + 4; i < to - 4; i++) {
+      let sum = 0;
+      for (let k = i - 4; k <= i + 4; k++) sum += this.currentRms[k];
+      if (sum < bestVal) {
+        bestVal = sum;
         best = i;
       }
     }
-    return best > 0 ? best : null;
+    return best > 0 ? best : n;
+  }
+
+  private threshold(): number {
+    return Math.max(0.012, this.noise * 3);
   }
 
   private processFrame(f: Int16Array): Int16Array | null {
     const rms = rmsOf(f);
     this.level = Math.min(1, rms * 8);
-    const threshold = Math.max(0.012, this.noise * 3);
-    const loud = rms > threshold;
+    const loud = rms > this.threshold();
 
     if (!this.inSpeech) {
       // Grundpegel langsam nachführen (nur in leisen Phasen)
@@ -158,18 +183,16 @@ export class Segmenter {
       this.reset();
       return seg;
     }
-    if (this.current.length >= this.softMaxFrames) {
-      // Sehr lange ohne Pause: an der leisesten Stelle der letzten Sekunden teilen (Atemzug, Wortgrenze),
-      // damit kein Wort zerschnitten wird. Der Rest beginnt den nächsten Abschnitt.
-      const cut = this.current.length >= this.maxFrames ? this.current.length : this.quietestPoint();
+    if (this.current.length >= this.softMaxFrames && this.current.length % 5 === 0) {
+      // Sehr lange ohne Pause: an einer Atempause teilen (nie mitten im Wort, solange es geht).
+      // Der Rest beginnt den nächsten Abschnitt.
+      const cut = this.cutPoint(this.current.length >= this.maxFrames);
       if (cut !== null) {
         const seg = concat(this.current.slice(0, cut));
-        const restFrames = this.current.slice(cut);
         const restRms = this.currentRms.slice(cut);
-        const threshold = Math.max(0.012, this.noise * 3);
-        this.current = restFrames;
+        this.current = this.current.slice(cut);
         this.currentRms = restRms;
-        this.speechFrames = restRms.filter((r) => r > threshold).length;
+        this.speechFrames = restRms.filter((r) => r > this.threshold()).length;
         this.silenceRun = 0;
         return seg;
       }

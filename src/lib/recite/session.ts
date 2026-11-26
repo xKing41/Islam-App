@@ -4,7 +4,7 @@
  *
  * Rein rechnerisch, ohne React-Native-Abhängigkeiten (mit Unit-Tests geprüft).
  */
-import { alignWords, combineOpinions, formulaRange, type Alignment, type FormulaOptions, type Token } from './align';
+import { alignRecitation, applyVocabulary, combineOpinions, type Alignment, type FormulaOptions, type Token } from './align';
 
 export type RecitedSegment = {
   /** Erkannte Wörter (Hauptdurchgang) */
@@ -19,7 +19,12 @@ export type SessionResult = {
   segOfHeard: number[];
 };
 
-export function evaluateSession(expected: string[], segments: RecitedSegment[], opts: FormulaOptions): SessionResult {
+export function evaluateSession(
+  expected: string[],
+  segments: RecitedSegment[],
+  opts: FormulaOptions,
+  isQuranWord?: (norm: string) => boolean,
+): SessionResult {
   const all: Token[] = [];
   const segOf: number[] = [];
   segments.forEach((s, k) =>
@@ -28,16 +33,15 @@ export function evaluateSession(expected: string[], segments: RecitedSegment[], 
       segOf.push(k);
     }),
   );
-  const { from, to } = formulaRange(all, opts);
-  const primary = alignWords(expected, all.slice(from, to));
+  const { alignment: primary, from } = alignRecitation(expected, all, opts);
   let alignment = primary;
   if (segments.some((s) => s.alt)) {
     const alt: Token[] = [];
     for (const s of segments) alt.push(...(s.alt ?? s.tokens));
-    const r = formulaRange(alt, opts);
-    alignment = combineOpinions(primary, alignWords(expected, alt.slice(r.from, r.to)));
+    alignment = combineOpinions(primary, alignRecitation(expected, alt, opts).alignment);
   }
-  return { alignment, segOfHeard: segOf.slice(from, to) };
+  if (isQuranWord) alignment = applyVocabulary(alignment, isQuranWord);
+  return { alignment, segOfHeard: segOf.slice(from) };
 }
 
 /** Abschnitte, die zu erwarteten Wörtern im Bereich [from, to) gehören (inkl. zusätzlicher Wörter dort). */

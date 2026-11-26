@@ -238,6 +238,20 @@ describe('Hadith-Daten', () => {
   }
 });
 
+describe('Koran-Wortschatz (Rezitation prüfen)', () => {
+  it('enthält jede Wortform des Korantextes', () => {
+    const vocab = new Set(JSON.parse(readFileSync(join(root, 'src/data/quran/vocab.json'), 'utf8')));
+    for (let s = 1; s <= 114; s++) {
+      const data = JSON.parse(readFileSync(join(root, `src/data/quran/suras/${String(s).padStart(3, '0')}.json`), 'utf8'));
+      for (const aya of data.arClean as string[])
+        for (const w of aya.split(' ')) {
+          const n = normalizeArabic(w).replace(/[^\u0621-\u064A]/g, '');
+          if (n) assert.ok(vocab.has(n), `${s}: ${w}`);
+        }
+    }
+  });
+});
+
 describe('Vers des Tages', () => {
   it('verweist nur auf existierende Verse und wechselt täglich', async () => {
     const { DAILY_VERSES, verseOfTheDay } = await import('../src/lib/daily');

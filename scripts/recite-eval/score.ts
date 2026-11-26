@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { alignWords, combineOpinions, stripFormulas, summarize, tokenize, type Alignment } from '../../src/lib/recite/align';
+import { alignRecitation, applyVocabulary, combineOpinions, summarize, tokenize, type Alignment } from '../../src/lib/recite/align';
 import { alignWords as legacyAlign, stripFormulas as legacyStrip, toWords as legacyWords } from './legacy-align';
 
 type Transcripts = Record<string, { segments: { ms: number; text: Record<string, string> }[] }>;
@@ -83,16 +83,16 @@ type Matcher = { name: string; run: (expected: string[], heardText: string[], s:
 
 const formulaOpts = (s: number, a: number) => ({ expectedStartsWithBasmala: s === 1 && a === 1, endsWithFatiha: s === 1 && a === 7 });
 
-function strict(variant: string, second?: string): Matcher {
+const vocab = new Set<string>(JSON.parse(readFileSync(join(ROOT, 'src/data/quran/vocab.json'), 'utf8')));
+
+function strict(variant: string, second?: string, withVocab = false): Matcher {
   return {
-    name: second ? `streng, ${variant} + Gegenprobe ${second}` : `streng, ${variant}`,
+    name: `streng, ${variant}${second ? ` + Gegenprobe ${second}` : ''}${withVocab ? ' + Wortschatz' : ''}`,
     run: (expected, texts, s, a, fo) => {
       const opts = fo ?? formulaOpts(s, a);
-      const heard = stripFormulas(tokenize(texts[0]), opts);
-      const primary = alignWords(expected, heard);
-      if (!second) return primary;
-      const alt = stripFormulas(tokenize(texts[1]), opts);
-      return combineOpinions(primary, alignWords(expected, alt));
+      let al = alignRecitation(expected, tokenize(texts[0]), opts).alignment;
+      if (second) al = combineOpinions(al, alignRecitation(expected, tokenize(texts[1]), opts).alignment);
+      return withVocab ? applyVocabulary(al, (w) => vocab.has(w)) : al;
     },
   };
 }
@@ -102,7 +102,7 @@ function legacy(variant: string): Matcher {
     run: (expected, texts, s) => {
       const heard = legacyStrip(legacyWords(texts[0]), s === 1);
       const r = legacyAlign(expected, heard);
-      return { ...r, heardAt: [], extras: r.extras.map((e) => ({ ...e, kind: 'extra' as const, heardIndex: -1 })) };
+      return { ...r, heardAt: [], repeats: 0, extras: r.extras.map((e) => ({ ...e, kind: 'extra' as const, heardIndex: -1 })) };
     },
   };
 }
@@ -113,9 +113,10 @@ const V = [...variantsAvailable];
 const configs: { m: Matcher; variants: string[] }[] = [];
 for (const v of V) configs.push({ m: legacy(v), variants: [v] });
 for (const v of V) configs.push({ m: strict(v), variants: [v] });
+for (const v of V) configs.push({ m: strict(v, undefined, true), variants: [v] });
 if (V.includes('greedy') && V.includes('beam5')) {
-  configs.push({ m: strict('beam5', 'greedy'), variants: ['beam5', 'greedy'] });
-  configs.push({ m: strict('greedy', 'beam5'), variants: ['greedy', 'beam5'] });
+  // so arbeitet die App: schnell erkennen, markierte Stellen gründlich gegenprüfen, Wortschatz-Regel
+  configs.push({ m: strict('greedy', 'beam5', true), variants: ['greedy', 'beam5'] });
 }
 
 const keyOf = (rec: string, s: number, a: number) => `${rec}/${String(s).padStart(3, '0')}${String(a).padStart(3, '0')}`;

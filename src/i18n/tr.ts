@@ -301,7 +301,7 @@ export const tr: Dictionary = {
     extraWord: (w: string) => `fazladan okundu: “${w}”`,
     uncertainExtra: (w: string) => `belki fazladan okundu: “${w}” – lütfen dinleyin`,
     correctedWord: (w: string) => `“${w}” okundu ve hemen düzeltildi`,
-    repeats: (n: number) => `${n} tekrar (hata değil)`,
+    repeats: (n: number) => `${n} kez yeniden başlandı (hata değil)`,
     unfinished: (exp: string) => `“${exp}” – ayet sonuna kadar okunmadı`,
     checking: 'İkinci kontrol …',
     uncertainCount: (n: number) => `${n} belirsiz`,

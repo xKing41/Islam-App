@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
-import { alignWords, combineOpinions, stripFormulas, summarize, tokenize, toWords } from '../src/lib/recite/align';
+import { alignWords, applyVocabulary, combineOpinions, stripFormulas, summarize, tokenize, toWords } from '../src/lib/recite/align';
 import { resampleTo16k, Segmenter } from '../src/lib/recite/segmenter';
 import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags } from '../src/lib/recite/session';
 
@@ -87,7 +87,7 @@ describe('Wortabgleich', () => {
     const s = summarize(a);
     assert.equal(s.correct, 12);
     assert.equal(s.extra, 0);
-    assert.equal(s.repeats, 2);
+    assert.equal(s.repeats, 1); // einmal neu angesetzt
   });
 
   it('wertet ein eingefügtes Wort als Fehler, auch wenn es weiter vorne schon vorkam', () => {
@@ -102,8 +102,19 @@ describe('Wortabgleich', () => {
     // „… مالك يوم الدين | يوم الدين اياك …“
     const heard = [...fatiha.slice(0, 13), ...fatiha.slice(11, 13), ...fatiha.slice(13, 16)];
     const s = summarize(alignWords(fatiha, heard));
-    assert.equal(s.repeats, 2);
+    assert.equal(s.repeats, 1);
     assert.equal(s.extra + s.wrong + s.missing, 0);
+  });
+
+  it('verkraftet mehrfach wiederholte Phrasen (auch mit Hörfehler in der Wiederholung)', () => {
+    // 67:8 wie bei manchen Rezitatoren: „كلما القي فيها فوج سالهم خزنتها“ zweimal, einmal davon verhört
+    const exp = toWords('تكاد تميز من الغيظ كلما القي فيها فوج سالهم خزنتها الم ياتكم نذير');
+    const heard = toWords('تكاد تميز من الغيظ كلما القي فيها فوج سالهم فزنتها كلما القي فيها فوج سالهم خزنتها الم ياتكم نذير');
+    const s = summarize(alignWords(exp, heard));
+    assert.equal(s.correct, exp.length);
+    assert.equal(s.extra + s.wrong + s.missing, 0);
+    assert.equal(s.repeats, 1);
+    assert.equal(s.corrected, 1); // „فزنتها“ – im zweiten Durchgang richtig
   });
 
   it('erkennt eine sofortige Selbstkorrektur', () => {
@@ -131,6 +142,16 @@ describe('Wortabgleich', () => {
     assert.equal(combineOpinions(primary, second).status[3], 'uncertain');
     // bestätigt die Gegenprobe den Fehler, bleibt er ein Fehler
     assert.equal(combineOpinions(primary, primary).status[3], 'wrong');
+  });
+
+  it('markiert Nicht-Wörter (Hörfehler) als unsicher, echte Verwechslungen als Fehler', () => {
+    const vocab = new Set<string>(JSON.parse(readFileSync(join(root, 'src/data/quran/vocab.json'), 'utf8')));
+    const known = (w: string) => vocab.has(w);
+    const exp = toWords('فسحقا لاصحاب السعير ان الذين يخشون ربهم بالغيب');
+    // „الساعير“ kommt im Koran nicht vor → unsicher; „يعلمون“ statt „يخشون“ ist ein echtes Wort → Fehler
+    const a = applyVocabulary(alignWords(exp, toWords('فسحقا لاصحاب الساعير ان الذين يعلمون ربهم بالغيب')), known);
+    assert.equal(a.status[2], 'uncertain');
+    assert.equal(a.status[5], 'wrong');
   });
 
   it('übergeht „Amin“ nach Al-Fatiha', () => {
@@ -196,6 +217,22 @@ describe('Pausen-Erkennung', () => {
     assert.equal(found.length, 2);
     const first = found[0].length / rate;
     assert.ok(first > 15 && first < 16, `Schnitt bei ${first} s`);
+  });
+
+  it('teilt auch bei Hall nur an einer Atempause, nicht an kurzen leisen Lauten', () => {
+    const seg = new Segmenter({ sampleRate: rate });
+    const level = (s: number, amp: number) => {
+      const out = new Int16Array(Math.round(rate * s));
+      for (let i = 0; i < out.length; i++) out[i] = Math.round(amp * Math.sin((2 * Math.PI * 220 * i) / rate));
+      return out;
+    };
+    // 0,06 s leiser Laut bei 14 s (z. B. ein „ff“) – zu kurz; echte, aber verhallte Pause (0,25 s) bei 17 s
+    const parts = [silence(0.5), tone(14), level(0.06, 1500), tone(2.94), level(0.25, 1500), tone(8), silence(1.5)];
+    const found: Int16Array[] = [];
+    for (const p of parts) for (let i = 0; i < p.length; i += 1600) found.push(...seg.push(p.slice(i, i + 1600)));
+    assert.ok(found.length >= 2);
+    const first = found[0].length / rate;
+    assert.ok(first > 17 && first < 18, `Schnitt bei ${first} s`);
   });
 
   it('rechnet 48 kHz auf 16 kHz um', () => {

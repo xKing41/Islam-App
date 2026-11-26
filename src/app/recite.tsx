@@ -25,6 +25,7 @@ import { type Decoder, getWhisper, releaseWhisper, selfTest, transcribePcm } fro
 import { downloadModel, isModelReady, MODEL } from '@/lib/recite/model';
 import { concat, resampleTo16k, Segmenter } from '@/lib/recite/segmenter';
 import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags } from '@/lib/recite/session';
+import { isQuranWord } from '@/lib/recite/vocab';
 import { useQuranStore } from '@/store/quran';
 import { useSettings } from '@/store/settings';
 
@@ -127,7 +128,7 @@ export default function ReciteScreen() {
   useEffect(() => {
     expectedRef.current = expected;
   }, [expected]);
-  const result = useMemo(() => evaluateSession(expected.words, segs, expected.formula), [expected, segs]);
+  const result = useMemo(() => evaluateSession(expected.words, segs, expected.formula, isQuranWord), [expected, segs]);
   // Nach dem Stoppen: angefangener, nicht beendeter Vers → fehlende Wörter
   const alignment = phase === 'done' ? finishAlignment(result.alignment, expected.ayat) : result.alignment;
   const summary = summarize(alignment);
@@ -177,7 +178,7 @@ export default function ReciteScreen() {
         }
         // 2) Gegenprobe für Abschnitte mit markierten Wörtern
         if (!SECOND_OPINION) break;
-        const res = evaluateSession(expectedRef.current.words, segsRef.current, expectedRef.current.formula);
+        const res = evaluateSession(expectedRef.current.words, segsRef.current, expectedRef.current.formula, isQuranWord);
         const k = segmentsWithFlags(res).find((x) => !altTried.current.has(x));
         if (k === undefined) break;
         altTried.current.add(k);
@@ -385,7 +386,7 @@ export default function ReciteScreen() {
           );
       }
       for (const e of alignment.extras) {
-        if (extraOwner(e) < a.from || extraOwner(e) >= a.to || e.kind === 'repeat') continue;
+        if (extraOwner(e) < a.from || extraOwner(e) >= a.to) continue;
         if (e.kind === 'corrected') notes.push(note(`c${e.heardIndex}`, t.recite.correctedWord(ar(e.word)), 'textSecondary'));
         else
           notes.push(
@@ -421,7 +422,7 @@ export default function ReciteScreen() {
   /** Zusätzlich gesagte Wörter erscheinen klein an der Stelle, an der sie gesagt wurden. */
   const extrasAfter = (i: number) =>
     alignment.extras
-      .filter((e) => e.before === i + 1 && e.kind !== 'repeat')
+      .filter((e) => e.before === i + 1)
       .map((e) => (
         <Text
           key={`e${e.heardIndex}`}
