@@ -88,7 +88,15 @@ jobs:
           "
           npx tsx scripts/recite-eval/score.ts transcripts.json --out eval-report.md --examples 40
           cat eval-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Bericht und Rohdaten ins Protokoll
+        run: |
+          echo "===== BERICHT ====="
+          cat eval-report.md
+          echo "===== ROHDATEN (gzip+base64) ====="
+          gzip -9 -c transcripts.json | base64 -w 3000 | sed 's/^/ROH:/'
+          echo "===== ENDE ====="
       - name: Veröffentlichen
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: rezitation-auswertung

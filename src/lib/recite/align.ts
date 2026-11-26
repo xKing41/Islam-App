@@ -274,6 +274,30 @@ export function alignWords(expected: string[], heardIn: (string | Token)[]): Ali
     }
   }
 
+  // Wiederholung nur, wenn die zusätzlichen Wörter genau die unmittelbar davor rezitierten Wörter noch
+  // einmal sagen („… رب العالمين | رب العالمين …“). Sonst ist es ein eingefügtes Wort (Fehler) – auch wenn
+  // es weiter vorne im Vers schon vorkam.
+  for (let k = 0; k < extras.length; ) {
+    if (extras[k].kind !== 'repeat') {
+      k++;
+      continue;
+    }
+    let end = k;
+    while (
+      end + 1 < extras.length &&
+      extras[end + 1].kind === 'repeat' &&
+      extras[end + 1].heardIndex === extras[end].heardIndex + 1 &&
+      extras[end + 1].before === extras[k].before
+    )
+      end++;
+    const len = end - k + 1;
+    const at = extras[k].before - len;
+    let contiguous = at >= 0;
+    for (let q = 0; contiguous && q < len; q++) contiguous = exp[at + q] === hf[extras[k + q].heardIndex];
+    if (!contiguous) for (let q = k; q <= end; q++) extras[q].kind = 'extra';
+    k = end + 1;
+  }
+
   // Selbstkorrektur: ein zusätzliches Wort, auf das sofort die Wiederholung folgt
   // („… رب الكافرين رب العالمين“) oder das dem folgenden erwarteten Wort ähnelt („نرزقهم نرزقكم“).
   for (let k = 0; k < extras.length; k++) {

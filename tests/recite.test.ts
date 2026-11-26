@@ -90,6 +90,22 @@ describe('Wortabgleich', () => {
     assert.equal(s.repeats, 2);
   });
 
+  it('wertet ein eingefügtes Wort als Fehler, auch wenn es weiter vorne schon vorkam', () => {
+    // „الحمد لله رب العالمين الرحمن الرحيم [لله] مالك“ – kein Neuansatz, sondern ein eingeschobenes Wort
+    const heard = [...fatiha.slice(0, 10), 'لله', ...fatiha.slice(10, 13)];
+    const s = summarize(alignWords(fatiha, heard));
+    assert.equal(s.extra, 1);
+    assert.equal(s.repeats, 0);
+  });
+
+  it('erkennt einen Neuansatz über mehrere Wörter als Wiederholung', () => {
+    // „… مالك يوم الدين | يوم الدين اياك …“
+    const heard = [...fatiha.slice(0, 13), ...fatiha.slice(11, 13), ...fatiha.slice(13, 16)];
+    const s = summarize(alignWords(fatiha, heard));
+    assert.equal(s.repeats, 2);
+    assert.equal(s.extra + s.wrong + s.missing, 0);
+  });
+
   it('erkennt eine sofortige Selbstkorrektur', () => {
     // „… رب الكافرين رب العالمين“ – falsches Wort, dann neu angesetzt
     const heard = [...fatiha.slice(0, 7), 'الكافرين', ...fatiha.slice(6, 8)];
