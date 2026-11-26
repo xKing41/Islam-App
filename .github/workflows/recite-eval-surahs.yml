@@ -9,6 +9,9 @@ on:
       variants:
         description: Suchverfahren (JSON-Liste)
         default: '["greedy","beam5","greedy-split"]'
+      seg:
+        description: Abweichende Abschnitts-Einstellungen für transcribe.ts (leer = wie in der App)
+        default: ''
 
 permissions:
   contents: write
@@ -39,7 +42,7 @@ jobs:
         run: |
           node scripts/recite-eval/mp3quran-jobs.mjs > jobs.json
           npx tsx scripts/recite-eval/transcribe.ts --rtool ./rtool --model model.bin --work work \
-            --jobs jobs.json --variants ${{ matrix.variant }} --threads 4 --shard ${{ matrix.shard }}/4
+            --jobs jobs.json --variants ${{ matrix.variant }} --threads 4 --shard ${{ matrix.shard }}/4 ${{ inputs.seg }}
           cp work/transcripts.json transcripts-${{ matrix.variant }}-${{ matrix.shard }}.json
       - uses: actions/upload-artifact@v4
         with:

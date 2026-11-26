@@ -84,7 +84,13 @@ function writeWav(path: string, pcm: Int16Array) {
 
 /** Zerlegt eine Aufnahme wie die App (Puffer von 100 ms, am Ende „Stopp“). */
 export function segmentLikeApp(pcm: Int16Array): Int16Array[] {
-  const seg = new Segmenter({ sampleRate: 16000 });
+  // Abweichende Einstellungen nur zum Ausprobieren (Standard = wie in der App)
+  const seg = new Segmenter({
+    sampleRate: 16000,
+    ...(args.silenceMs ? { silenceMs: Number(args.silenceMs) } : {}),
+    ...(args.softMaxMs ? { softMaxSegmentMs: Number(args.softMaxMs) } : {}),
+    ...(args.maxMs ? { maxSegmentMs: Number(args.maxMs) } : {}),
+  });
   const out: Int16Array[] = [];
   for (let i = 0; i < pcm.length; i += 1600) out.push(...seg.push(pcm.subarray(i, i + 1600)));
   // 1 s Stille anhängen, wie wenn man nach dem letzten Vers kurz wartet und dann stoppt
