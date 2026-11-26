@@ -12,7 +12,7 @@ import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextIn
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NumberBadge } from '@/components/ayah-badge';
-import { AppText, Button, Card, Icon, Screen, Segmented, Stepper } from '@/components/ui';
+import { AppText, Button, Card, Icon, Screen, Segmented, Stepper, SwitchRow } from '@/components/ui';
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n';
@@ -20,7 +20,7 @@ import { ayahAudioUrl } from '@/lib/quran/audio';
 import { getSura } from '@/lib/quran/data';
 import { getSuraMeta, SURAS, suraTitle } from '@/lib/quran/meta';
 import { normalizeArabic, normalizeLatin } from '@/lib/quran/text';
-import { alignWords, type Extra, summarize, type Token, tokenize, type WordStatus } from '@/lib/recite/align';
+import { alignWords, type Extra, summarize, type Token, tokenize, vowelHints, type WordStatus } from '@/lib/recite/align';
 import { type Decoder, getWhisper, releaseWhisper, selfTest, transcribePcm } from '@/lib/recite/engine';
 import { downloadModel, isModelReady, MODEL } from '@/lib/recite/model';
 import { concat, resampleTo16k, Segmenter } from '@/lib/recite/segmenter';
@@ -95,6 +95,8 @@ export default function ReciteScreen() {
   const lastRead = useQuranStore((s) => s.lastRead);
   const lang = useSettings((s) => s.language);
   const reciter = useSettings((s) => s.reciter);
+  const vowelOn = useSettings((s) => s.reciteVowelHints);
+  const setSettings = useSettings((s) => s.set);
 
   const [sura, setSura] = useState(() => (params.demo === '1' ? 1 : Number(params.sura) || lastRead?.sura || 1));
   const [startAya, setStartAya] = useState(() =>
@@ -132,6 +134,9 @@ export default function ReciteScreen() {
   // Nach dem Stoppen: angefangener, nicht beendeter Vers → fehlende Wörter
   const alignment = phase === 'done' ? finishAlignment(result.alignment, expected.ayat) : result.alignment;
   const summary = summarize(alignment);
+  // Vokal-Hinweise (zuschaltbar): richtig erkannte Wörter mit anders gehörten Vokalzeichen
+  const hints = vowelOn ? vowelHints(alignment, result.heard, expected.display, new Set(expected.ayat.map((a) => a.to - 1))) : [];
+  const hintCount = hints.filter(Boolean).length;
   const player = useAudioPlayer();
 
   const reset = useCallback(() => {
@@ -385,6 +390,9 @@ export default function ReciteScreen() {
             ),
           );
       }
+      for (let i = a.from; i < a.to; i++) {
+        if (hints[i]) notes.push(note(`v${i}`, t.recite.vowelNote(ar(expected.display[i]), ar(hints[i] ?? '')), 'warning'));
+      }
       for (const e of alignment.extras) {
         if (extraOwner(e) < a.from || extraOwner(e) >= a.to) continue;
         if (e.kind === 'corrected') notes.push(note(`c${e.heardIndex}`, t.recite.correctedWord(ar(e.word)), 'textSecondary'));
@@ -402,6 +410,13 @@ export default function ReciteScreen() {
     .filter((a) => a.notes.length);
 
   const wordStyle = (s: WordStatus, i: number) => {
+    if (s === 'correct' && hints[i])
+      return {
+        color: theme.success,
+        textDecorationLine: 'underline' as const,
+        textDecorationStyle: 'dotted' as const,
+        textDecorationColor: theme.warning,
+      };
     if (s === 'correct') return { color: theme.success };
     if (s === 'wrong') return { color: theme.danger, textDecorationLine: 'underline' as const };
     if (s === 'missing') return { color: theme.danger, textDecorationLine: 'line-through' as const, opacity: 0.8 };
@@ -467,6 +482,13 @@ export default function ReciteScreen() {
             ]}
             value={hidden ? 'hide' : 'show'}
             onChange={(v) => setHidden(v === 'hide')}
+          />
+          <SwitchRow
+            title={t.recite.vowelHints}
+            subtitle={t.recite.vowelHintsSub}
+            value={vowelOn}
+            onValueChange={(v) => setSettings({ reciteVowelHints: v })}
+            last
           />
         </Card>
 
@@ -559,6 +581,7 @@ export default function ReciteScreen() {
               {t.recite.resultLine(summary.correct, summary.correct + summary.wrong + summary.missing + summary.uncertain)}
               {summary.uncertain ? ` · ${t.recite.uncertainCount(summary.uncertain)}` : ''}
               {summary.extra ? ` · ${t.recite.extraWords(summary.extra)}` : ''}
+              {hintCount ? ` · ${t.recite.vowelCount(hintCount)}` : ''}
             </AppText>
             {summary.repeats ? (
               <AppText variant="caption" color="textMuted">

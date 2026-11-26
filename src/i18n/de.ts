@@ -287,6 +287,10 @@ export const de = {
     position: (i: number, n: number) => `${i} von ${n}`,
   },
   recite: {
+    vowelHints: 'Vokale vergleichen (Hinweise)',
+    vowelHintsSub: 'Zeigt Wörter, deren Vokale anders klangen – z. B. eine falsche Endung. Nur ein Hinweis: Die Erkennung hört Vokale nicht ganz zuverlässig.',
+    vowelNote: (exp: string, heard: string) => `Vokale bei „${exp}“ anders gehört: „${heard}“ – bitte anhören`,
+    vowelCount: (n: number) => (n === 1 ? '1 Vokal-Hinweis' : `${n} Vokal-Hinweise`),
     retryFrom: 'Ab diesem Vers neu üben',
     selfTestResult2: (text: string, s1: string, s2: string, ok: number, n: number) =>
       `Erkannt: „${text}“ · ${ok}/${n} Wörter richtig · schnell ${s1} s, gründlich ${s2} s`,

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
-import { alignWords, applyVocabulary, combineOpinions, stripFormulas, summarize, tokenize, toWords } from '../src/lib/recite/align';
+import { alignWords, applyVocabulary, combineOpinions, stripFormulas, summarize, tokenize, toWords, vowelHints, vowelPattern } from '../src/lib/recite/align';
 import { resampleTo16k, Segmenter } from '../src/lib/recite/segmenter';
 import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags } from '../src/lib/recite/session';
 
@@ -152,6 +152,24 @@ describe('Wortabgleich', () => {
     const a = applyVocabulary(alignWords(exp, toWords('فسحقا لاصحاب الساعير ان الذين يعلمون ربهم بالغيب')), known);
     assert.equal(a.status[2], 'uncertain');
     assert.equal(a.status[5], 'wrong');
+  });
+
+  it('vergleicht Vokalzeichen (nur als Hinweis), Idgham-Schadda und Versende-Endung ausgenommen', () => {
+    // gleiche Vokale trotz Schreibunterschied: Angleichungs-Schadda am Wortanfang
+    assert.equal(vowelPattern('لِّلشَّيَاطِينِ'), vowelPattern('لِلشَّيَاطِينِ'));
+    // 94:4 „وَرَفَعْنَا لَكَ ذِكْرَكَ“ – mit „ذِكْرُكَ“ (falsche Endung) mitten im Text
+    const display = ['وَرَفَعْنَا', 'لَكَ', 'ذِكْرَكَ', 'فَإِنَّ'];
+    const heard = tokenize('وَرَفَعْنَا لَكَ ذِكْرُكَ فَإِنَّ');
+    const a = alignWords(display.map((w) => tokenize(w)[0].norm), heard);
+    assert.deepEqual(vowelHints(a, heard, display, new Set([3])), [null, null, 'ذِكْرُكَ', null]);
+    // auch in Pausalform bleibt der Vokal vor dem Pronomen hörbar – der Hinweis bleibt
+    assert.deepEqual(vowelHints(a, heard, display, new Set([2])), [null, null, 'ذِكْرُكَ', null]);
+    // am Versende zählt die Endung des letzten Buchstabens nicht: „أَحَدٌ“ wird als „أَحَدْ“ gesprochen
+    const d2 = ['قُلْ', 'هُوَ', 'اللَّهُ', 'أَحَدٌ'];
+    const h2 = tokenize('قُلْ هُوَ اللَّهُ أَحَدُ');
+    const a2 = alignWords(d2.map((w) => tokenize(w)[0].norm), h2);
+    assert.deepEqual(vowelHints(a2, h2, d2, new Set([3])), [null, null, null, null]);
+    assert.deepEqual(vowelHints(a2, h2, d2, new Set([])), [null, null, null, 'أَحَدُ']);
   });
 
   it('übergeht „Amin“ nach Al-Fatiha', () => {

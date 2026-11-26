@@ -390,6 +390,42 @@ export function applyVocabulary(a: Alignment, isQuranWord: (norm: string) => boo
   return { ...a, status, extras };
 }
 
+/**
+ * Vokalzeichen eines Wortes je Buchstabe, z. B. „الْحَمْدُ“ → „ا: ل: ح:َ م: د:ُ“. Nicht verglichen werden
+ * Sukun (wird uneinheitlich geschrieben), die Schadda auf dem ersten Buchstaben (zeigt nur die
+ * Angleichung an das Wort davor) und auf Wunsch die Endung (am Versende wird sie nicht gesprochen).
+ */
+export function vowelPattern(word: string, dropFinal = false): string {
+  const out: string[] = [];
+  const w = word.replace(/\u0640/g, '').replace(/\u0671/g, 'ا').replace(/[\u06D6-\u06ED\u0670]/g, '');
+  for (const ch of w) {
+    if (/[\u0621-\u064A]/.test(ch)) out.push(`${ch.replace(/[آأإ]/, 'ا')}:`);
+    else if (/[\u064B-\u0651]/.test(ch) && out.length) {
+      const [l, m] = out[out.length - 1].split(':');
+      out[out.length - 1] = `${l}:${[...m, ch].sort().join('')}`;
+    }
+  }
+  if (out.length) out[0] = out[0].replace('\u0651', '');
+  if (dropFinal && out.length) out[out.length - 1] = `${out[out.length - 1].split(':')[0]}:`;
+  return out.join(' ');
+}
+
+/**
+ * Vokal-Hinweise: Für richtig erkannte Wörter, deren Vokalzeichen anders gehört wurden als im Mushaf
+ * (z. B. „ذِكْرُكَ“ statt „ذِكْرَكَ“), das gehörte Wort – sonst null. Nur ein Hinweis: Die Erkennung hört die
+ * Vokale nicht ganz zuverlässig (gemessen: 99,4 % Übereinstimmung bei korrekter Rezitation).
+ * Erkannte Wörter ohne Vokalzeichen werden nicht verglichen.
+ */
+export function vowelHints(a: Alignment, heard: Token[], display: string[], verseEnds: Set<number>): (string | null)[] {
+  return a.status.map((st, i) => {
+    if (st !== 'correct' || a.heardAt[i] < 0) return null;
+    const h = heard[a.heardAt[i]];
+    if (!h || !/[\u064B-\u0650]/.test(h.raw)) return null;
+    const end = verseEnds.has(i);
+    return vowelPattern(display[i] ?? '', end) === vowelPattern(h.raw, end) ? null : h.raw;
+  });
+}
+
 export type Summary = {
   total: number;
   reached: number;

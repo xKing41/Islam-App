@@ -15,6 +15,8 @@ export type RecitedSegment = {
 
 export type SessionResult = {
   alignment: Alignment;
+  /** Die verwendeten erkannten Wörter (Hauptdurchgang, ohne Isti‘adha usw.) – Index wie in alignment.heardAt */
+  heard: Token[];
   /** Für jedes erkannte Wort (nach Entfernen von Isti‘adha/Basmala …): Index des Abschnitts */
   segOfHeard: number[];
 };
@@ -41,7 +43,7 @@ export function evaluateSession(
     alignment = combineOpinions(primary, alignRecitation(expected, alt, opts).alignment);
   }
   if (isQuranWord) alignment = applyVocabulary(alignment, isQuranWord);
-  return { alignment, segOfHeard: segOf.slice(from) };
+  return { alignment, heard: all.slice(from), segOfHeard: segOf.slice(from) };
 }
 
 /** Abschnitte, die zu erwarteten Wörtern im Bereich [from, to) gehören (inkl. zusätzlicher Wörter dort). */

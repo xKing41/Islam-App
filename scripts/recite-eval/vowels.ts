@@ -32,6 +32,8 @@ function marks(word: string, dropFinal: boolean): string[] {
     }
   }
   if (dropFinal && out.length) out[out.length - 1] = out[out.length - 1].split(':')[0] + ':';
+  // Schadda auf dem ersten Buchstaben zeigt nur die Angleichung an das Wort davor (Idgham) – Schreibweise
+  if (out.length) out[0] = out[0].replace('ّ', '');
   return out;
 }
 
@@ -45,13 +47,25 @@ let words = 0;
 let same = 0;
 let sameIgnoringEnd = 0;
 const examples: string[] = [];
+const meta = JSON.parse(readFileSync(join(ROOT, 'src/data/quran/meta.json'), 'utf8'));
 for (const [key, v] of Object.entries(data)) {
   const m = key.match(/\/(\d{3})(\d{3})$/);
-  if (!m) continue;
-  const s = Number(m[1]);
-  const a = Number(m[2]);
-  let simple = sura(s).arSimple[a - 1].split(' ');
-  if (a === 1 && s !== 1 && s !== 9) simple = simple.slice(4);
+  const ms = key.match(/\/sura(\d{3})$/);
+  if (!m && !ms) continue;
+  let simple: string[] = [];
+  if (m) {
+    const s = Number(m[1]);
+    const a = Number(m[2]);
+    simple = sura(s).arSimple[a - 1].split(' ');
+    if (a === 1 && s !== 1 && s !== 9) simple = simple.slice(4);
+  } else {
+    const s = Number(ms![1]);
+    for (let a = 1; a <= meta.suras[s - 1].ayas; a++) {
+      let w = sura(s).arSimple[a - 1].split(' ');
+      if (a === 1 && s !== 1 && s !== 9) w = w.slice(4);
+      simple.push(...w);
+    }
+  }
   const expNorm = simple.map((w) => tokenize(w)[0]?.norm ?? '');
   const heard = tokenize(v.segments.map((x) => x?.text[variant] ?? '').join(' '));
   const al = alignWords(expNorm, heard);

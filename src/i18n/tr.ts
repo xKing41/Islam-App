@@ -286,6 +286,10 @@ export const tr: Dictionary = {
     position: (i: number, n: number) => `${i} / ${n}`,
   },
   recite: {
+    vowelHints: 'Harekeleri karşılaştır (ipuçları)',
+    vowelHintsSub: 'Harekesi farklı duyulan kelimeleri gösterir – ör. yanlış bir son hareke. Sadece ipucudur: Tanıma harekeleri tam güvenilir duymaz.',
+    vowelNote: (exp: string, heard: string) => `“${exp}” kelimesinin harekeleri farklı duyuldu: “${heard}” – lütfen dinleyin`,
+    vowelCount: (n: number) => `${n} hareke ipucu`,
     retryFrom: 'Bu ayetten itibaren tekrar çalış',
     selfTestResult2: (text: string, s1: string, s2: string, ok: number, n: number) =>
       `Tanınan: “${text}” · ${n} kelimeden ${ok} doğru · hızlı ${s1} sn, ayrıntılı ${s2} sn`,

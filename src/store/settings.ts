@@ -41,6 +41,8 @@ export type SettingsState = {
   translationFontSize: number;
   reciter: string;
   keepAwake: boolean;
+  /** Rezitation prüfen: Vokalzeichen vergleichen und Abweichungen als Hinweis zeigen */
+  reciteVowelHints: boolean;
   // Standort & Gebetszeiten
   location: SavedLocation | null;
   method: CalcMethod;
@@ -78,6 +80,7 @@ export const defaultSettings: SettingsState = {
   translationFontSize: 16,
   reciter: 'Alafasy_128kbps',
   keepAwake: true,
+  reciteVowelHints: false,
   location: null,
   method: 'Turkey',
   madhab: 'shafi',
