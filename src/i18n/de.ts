@@ -318,7 +318,7 @@ export const de = {
     intro:
       'Wähle Sure und Startvers und rezitiere. Die App hört zu und vergleicht jedes Wort Buchstabe für Buchstabe mit dem Mushaf.',
     limits:
-      'Geprüft wird der Wortlaut: falsche, ausgelassene und zusätzliche Wörter – schon ein einziger falscher Buchstabe zählt als Fehler. Nicht bewertet werden Vokalzeichen und Tajwid-Regeln (Dehnungen, Ghunna, genaue Aussprache einzelner Laute). Ist die Erkennung unsicher, wird das Wort gelb markiert – hör dir dann deine Aufnahme an.',
+      'Geprüft wird der Wortlaut: falsche, ausgelassene und zusätzliche Wörter – schon ein einziger falscher Buchstabe zählt als Fehler. Nicht bewertet werden Tajwid-Regeln (Dehnungen, Ghunna, genaue Aussprache einzelner Laute); Vokalzeichen werden auf Wunsch als Hinweis verglichen. Ist die Erkennung unsicher, wird das Wort gelb markiert – hör dir dann deine Aufnahme an.',
     sura: 'Sure',
     startVerse: 'Ab Vers',
     showText: 'Text zeigen',

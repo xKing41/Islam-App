@@ -317,7 +317,7 @@ export const tr: Dictionary = {
     intro:
       'Sure ve başlangıç ayetini seç, sonra oku. Uygulama dinler ve her kelimeyi harf harf Mushaf ile karşılaştırır.',
     limits:
-      'Kelimeler kontrol edilir: yanlış, atlanan ve fazladan okunan kelimeler – tek bir yanlış harf bile hata sayılır. Harekeler ve tecvid kuralları (med, gunne, harflerin mahreci) değerlendirilmez. Tanıma emin değilse kelime sarı işaretlenir – o zaman kendi kaydını dinle.',
+      'Kelimeler kontrol edilir: yanlış, atlanan ve fazladan okunan kelimeler – tek bir yanlış harf bile hata sayılır. Tecvid kuralları (med, gunne, harflerin mahreci) değerlendirilmez; harekeler istenirse ipucu olarak karşılaştırılır. Tanıma emin değilse kelime sarı işaretlenir – o zaman kendi kaydını dinle.',
     sura: 'Sure',
     startVerse: 'Başlangıç ayeti',
     showText: 'Metni göster',
