@@ -87,13 +87,16 @@ export default function SuraReader() {
 
   // Zuletzt gelesenen Vers merken (verzögert, damit beim Scrollen nicht ständig gespeichert wird)
   const lastReadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onViewable = useRef(({ viewableItems }: { viewableItems: ListViewToken[] }) => {
-    const first = viewableItems.find((v) => v.isViewable && v.item);
-    const row = first?.item as AyahRow | undefined;
-    if (!row) return;
-    if (lastReadTimer.current) clearTimeout(lastReadTimer.current);
-    lastReadTimer.current = setTimeout(() => useQuranStore.getState().setLastRead(sura, row.aya), 1200);
-  });
+  const onViewable = useCallback(
+    ({ viewableItems }: { viewableItems: ListViewToken[] }) => {
+      const first = viewableItems.find((v) => v.isViewable && v.item);
+      const row = first?.item as AyahRow | undefined;
+      if (!row) return;
+      if (lastReadTimer.current) clearTimeout(lastReadTimer.current);
+      lastReadTimer.current = setTimeout(() => useQuranStore.getState().setLastRead(sura, row.aya), 1200);
+    },
+    [sura],
+  );
   useEffect(
     () => () => {
       if (lastReadTimer.current) clearTimeout(lastReadTimer.current);
@@ -211,7 +214,7 @@ export default function SuraReader() {
         }}
         initialNumToRender={12}
         windowSize={11}
-        onViewableItemsChanged={onViewable.current}
+        onViewableItemsChanged={onViewable}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
         onScrollToIndexFailed={(info) => {
           // Vers noch nicht gemessen: erst ungefähr hinscrollen, dann genau (max. 5 Versuche)

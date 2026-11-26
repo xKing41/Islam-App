@@ -10,15 +10,18 @@ Eine persönliche Android-App, die die wichtigsten islamischen Werkzeuge an eine
 | 🔔 **Erinnerungen** | Benachrichtigung zur Gebetszeit mit Azan (2 Aufnahmen + Kurzfassung), optional Vorab-Erinnerung, „Wecker-Modus“ für maximale Zuverlässigkeit |
 | 📖 **Koran** | Arabischer Uthmani-Text (Tanzil) mit Übersetzung (Bubenheim/Elyas bzw. Diyanet) und optionaler Umschrift (okunuşu), Suren-/Dschuz-Liste, Suche, Lesezeichen, „Weiterlesen“ |
 | 🎧 **Rezitation** | Vers für Vers mit 8 Rezitatoren (u. a. Alafasy, Husary, Minshawi), Mitlesen mit Hervorhebung, Vers wiederholen, Wiedergabe im Hintergrund |
-| 📜 **Hadithe** | Über 600 (DE) bzw. 2.100 (TR) Hadithe von HadeethEnc mit arabischem Text, Einstufung, Quelle und Erläuterung; Themen, Suche, Favoriten |
+| 📜 **Hadithe** | Über 600 (DE) bzw. 2.100 (TR) Hadithe von HadeethEnc mit arabischem Text, Erläuterung und Lehren. Geordnet nach Themen (mit Unterthemen) und nach Sammlungen (Buchari & Muslim, Sahih al-Buchari, Sahih Muslim, Sunan …), Einstufung Sahih/Hasan auf einen Blick, Volltextsuche (auch arabisch), Hadith des Tages, Favoriten |
 | 🧭 **Qibla** | Kompass mit Kaaba-Richtung, Entfernung, Vibration bei richtiger Ausrichtung |
 | 📿 **Tesbih** | Zähler mit Ziel (33/99/100), Tesbihat nach dem Gebet (33·33·34), Vibration |
-| 🎙️ **Rezitation prüfen** | Du rezitierst, die App hört zu und markiert falsche, ausgelassene und zusätzliche Wörter – Vers für Vers, auch im Auswendig-Modus mit verborgenem Text. Erkennung offline auf dem Handy (Tarteel-Koranmodell). |
-| 🤲 **Dua & Zikr** | Bittgebete aus dem Koran (arabisch, Umschrift, Übersetzung, Audio) und Dua/Zikr aus der Sunnah (HadeethEnc) |
+| 🎙️ **Rezitation prüfen** | Du rezitierst, die App hört zu und vergleicht jedes Wort Buchstabe für Buchstabe mit dem Mushaf: falsche, ausgelassene und zusätzliche Wörter – schon ein falscher Buchstabe zählt. Wiederholungen und Selbstkorrekturen gelten nicht als Fehler, unsichere Stellen werden per Gegenprobe gelb markiert. Pro Vers: Vorbild-Rezitation und eigene Aufnahme anhören. Auch im Auswendig-Modus, offline auf dem Handy (Tarteel-Koranmodell). Genauigkeit gemessen an echten Rezitationen, siehe [QUELLEN.md](QUELLEN.md). |
+| 🤲 **Dua & Zikr** | Eigener Tab: Bittgebete aus dem Koran (arabisch, Umschrift, Übersetzung, Audio) und Dua/Zikr aus der Sunnah (HadeethEnc) |
+| 🏠 **Startseite** | Gebetszeiten, Schnellzugriff (Qibla, Tesbih, Kalender, Weiterlesen, Rezitation prüfen, Ramadan), Vers des Tages und Hadith des Tages |
 | 🗓️ **Hijri-Kalender** | Monatsansicht mit Hijri-Daten, Kandil-Nächte und Feiertage mit Countdown |
 | 🌙 **Ramadan** | Imsak- und Iftar-Tabelle für alle Fastentage |
 
-Geplant: offizielle Diyanet-Zeiten online, genaueres Erkennungsmodell (whisper-base).
+Aufbau: Tabs **Gebet · Koran · Hadith · Dua & Zikr · Mehr**. Qibla, Tesbih, Kalender und Ramadan sind über die Startseite und „Mehr“ erreichbar.
+
+Geplant: offizielle Diyanet-Zeiten online.
 
 ## App aufs Handy bringen
 
@@ -37,8 +40,9 @@ Technik: [Expo](https://expo.dev) SDK 58 (React Native 0.88, TypeScript, Expo Ro
 ```bash
 npm install
 npm run web          # im Browser ansehen
-npm test             # automatische Tests (Gebetszeiten, Hijri, Qibla, Datenprüfung)
+npm test             # automatische Tests (Gebetszeiten, Hijri, Qibla, Datenprüfung, Wortabgleich)
 npm run typecheck    # TypeScript-Prüfung
+npm run lint         # Code-Prüfung (ESLint)
 ```
 
 Daten neu erzeugen (nur nötig, wenn sich Quellen ändern):
@@ -60,5 +64,6 @@ src/store/        gespeicherte Einstellungen, Lesezeichen, Tesbih-Stand
 src/data/         aufbereitete Koran- und Hadith-Daten (automatisch erzeugt)
 data/sources/     Originaldateien der Quellen (unverändert)
 scripts/          Skripte zum Erzeugen der Daten
+scripts/recite-eval/  Messung von „Rezitation prüfen“ an echten Rezitationen (Workflow „Auswertung Rezitation prüfen“)
 tests/            automatische Tests
 ```

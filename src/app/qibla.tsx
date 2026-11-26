@@ -57,8 +57,7 @@ export default function QiblaScreen() {
 
   if (!location) {
     return (
-      <Screen topInset>
-        <AppText variant="title">{t.qibla.title}</AppText>
+      <Screen>
         <AppText color="textSecondary">{t.qibla.needLocation}</AppText>
         <LocationPrompt />
       </Screen>
@@ -76,8 +75,7 @@ export default function QiblaScreen() {
   const kmText = km.toLocaleString(lang === 'tr' ? 'tr-TR' : 'de-DE');
 
   return (
-    <Screen topInset>
-      <AppText variant="title">{t.qibla.title}</AppText>
+    <Screen>
       <AppText color="textSecondary">
         {location.name} · {t.qibla.distance(kmText)}
       </AppText>

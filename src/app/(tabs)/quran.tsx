@@ -64,6 +64,22 @@ export default function QuranScreen() {
           </Card>
         </Pressable>
       ) : null}
+      <Pressable onPress={() => router.push('/recite')} accessibilityRole="button">
+        {({ pressed }) => (
+          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md, opacity: pressed ? 0.85 : 1 }}>
+            <View style={[styles.reciteIcon, { backgroundColor: theme.primarySoft }]}>
+              <Icon name="microphone-outline" color={theme.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <AppText variant="label">{t.quran.reciteTitle}</AppText>
+              <AppText variant="caption" color="textSecondary">
+                {t.quran.reciteSub}
+              </AppText>
+            </View>
+            <Icon name="chevron-right" color={theme.textMuted} />
+          </Card>
+        )}
+      </Pressable>
       <Segmented<Mode>
         options={[
           { value: 'suras', label: t.quran.surahs },
@@ -202,6 +218,7 @@ function SuraRow({ s, lang, onPress }: { s: SuraMeta; lang: 'de' | 'tr'; onPress
 }
 
 const styles = StyleSheet.create({
+  reciteIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -17,19 +17,25 @@ export default function CalendarScreen() {
   const offset = useSettings((s) => s.hijriOffset);
   const [monthShift, setMonthShift] = useState(0);
 
-  const view = new Date(now.getFullYear(), now.getMonth() + monthShift, 1);
+  // angezeigter Monat als einfache Zahlen (Monate seit Jahr 0)
+  const monthIndex = now.getFullYear() * 12 + now.getMonth() + monthShift;
+  const viewYear = Math.floor(monthIndex / 12);
+  const viewMonth = monthIndex - viewYear * 12;
   const days = useMemo(() => {
-    const first = new Date(view.getFullYear(), view.getMonth(), 1);
+    const first = new Date(viewYear, viewMonth, 1);
     const startPad = (first.getDay() + 6) % 7; // Woche beginnt am Montag
-    const count = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    const count = new Date(viewYear, viewMonth + 1, 0).getDate();
     const cells: (Date | null)[] = Array.from({ length: startPad }, () => null);
-    for (let d = 1; d <= count; d++) cells.push(new Date(view.getFullYear(), view.getMonth(), d));
+    for (let d = 1; d <= count; d++) cells.push(new Date(viewYear, viewMonth, d));
     while (cells.length % 7) cells.push(null);
     return cells;
-  }, [view.getFullYear(), view.getMonth()]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [viewYear, viewMonth]);
 
   const upcoming = useMemo(() => upcomingIslamicDays(now, offset, 11), [now, offset]);
-  const special = useMemo(() => new Set(upcomingIslamicDays(addDays(view, -1), offset, 30).map((d) => startOfDay(d.date).getTime())), [view, offset]);
+  const special = useMemo(
+    () => new Set(upcomingIslamicDays(addDays(new Date(viewYear, viewMonth, 1), -1), offset, 30).map((d) => startOfDay(d.date).getTime())),
+    [viewYear, viewMonth, offset],
+  );
 
   const firstH = toHijri(days.find(Boolean) as Date, offset);
   const lastH = toHijri([...days].reverse().find(Boolean) as Date, offset);
@@ -49,7 +55,7 @@ export default function CalendarScreen() {
           </Pressable>
           <View style={{ alignItems: 'center' }}>
             <AppText variant="heading">
-              {t.months[view.getMonth()]} {view.getFullYear()}
+              {t.months[viewMonth]} {viewYear}
             </AppText>
             <AppText variant="caption" color="textSecondary">
               {hijriRange}

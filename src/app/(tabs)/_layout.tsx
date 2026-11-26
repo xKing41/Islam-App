@@ -25,7 +25,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{ title: t.tabs.prayer, tabBarIcon: icon('mosque') }} />
       <Tabs.Screen name="quran" options={{ title: t.tabs.quran, tabBarIcon: icon('book-open-page-variant') }} />
       <Tabs.Screen name="hadith" options={{ title: t.tabs.hadith, tabBarIcon: icon('book-open-variant') }} />
-      <Tabs.Screen name="qibla" options={{ title: t.tabs.qibla, tabBarIcon: icon('compass-outline') }} />
+      <Tabs.Screen name="duas" options={{ title: t.tabs.duas, tabBarIcon: icon('hands-pray') }} />
       <Tabs.Screen name="more" options={{ title: t.tabs.more, tabBarIcon: icon('dots-horizontal-circle-outline') }} />
     </Tabs>
   );

@@ -5,6 +5,7 @@
  * Deshalb gibt es für jeden Ton einen eigenen Kanal.
  */
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance, AndroidNotificationVisibility } from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { getDictionary } from '@/i18n';
@@ -44,16 +45,16 @@ export async function ensureChannels() {
   for (const ch of Object.values(CHANNELS)) {
     await Notifications.setNotificationChannelAsync(ch.id, {
       name: ch.name,
-      importance: ch.sound ? Notifications.AndroidImportance.MAX : Notifications.AndroidImportance.DEFAULT,
+      importance: ch.sound ? AndroidImportance.MAX : AndroidImportance.DEFAULT,
       sound: ch.sound,
       vibrationPattern: ch.sound ? [0, 400, 200, 400] : null,
       enableVibrate: !!ch.sound,
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      lockscreenVisibility: AndroidNotificationVisibility.PUBLIC,
     });
   }
   await Notifications.setNotificationChannelAsync(PRE_CHANNEL.id, {
     name: PRE_CHANNEL.name,
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     sound: 'default',
   });
 }

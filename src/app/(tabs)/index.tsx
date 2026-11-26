@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { DailyHadithCard, DailyVerseCard } from '@/components/daily-cards';
 import { LocationPrompt } from '@/components/location-prompt';
 import { AppText, Card, Icon, type IconName, Screen } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -11,7 +12,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n';
 import { formatHijri, ramadanDay, toHijri } from '@/lib/hijri';
 import { getCurrentAndNext, PRAYER_KEYS } from '@/lib/prayer-times';
-import { getSuraMeta, suraTitle } from '@/lib/quran/meta';
 import { formatCountdown, formatDate, formatTime } from '@/lib/time';
 import { useQuranStore } from '@/store/quran';
 import { useSettings } from '@/store/settings';
@@ -26,7 +26,6 @@ export default function PrayerScreen() {
   const notify = useSettings((s) => s.notify);
   const setNotify = useSettings((s) => s.setNotify);
   const hijriOffset = useSettings((s) => s.hijriOffset);
-  const lang = useSettings((s) => s.language);
   const lastRead = useQuranStore((s) => s.lastRead);
 
   // Nur einmal pro Minute neu berechnen – der Countdown nutzt `now` direkt.
@@ -45,6 +44,8 @@ export default function PrayerScreen() {
       onPress: () =>
         router.push(lastRead ? { pathname: '/sura/[id]', params: { id: lastRead.sura, aya: lastRead.aya } } : '/quran'),
     },
+    { icon: 'microphone-outline', label: t.home.quick.recite, onPress: () => router.push('/recite') },
+    { icon: 'weather-night', label: t.home.quick.ramadan, onPress: () => router.push('/ramadan') },
   ];
 
   return (
@@ -161,11 +162,8 @@ export default function PrayerScreen() {
         ))}
       </View>
 
-      {lastRead ? (
-        <AppText variant="caption" color="textMuted" style={{ textAlign: 'center' }}>
-          {t.quran.lastRead(suraTitle(getSuraMeta(lastRead.sura), lang).name, lastRead.aya)}
-        </AppText>
-      ) : null}
+      <DailyVerseCard date={now} />
+      <DailyHadithCard date={now} />
     </Screen>
   );
 }
@@ -175,9 +173,10 @@ const styles = StyleSheet.create({
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4, alignSelf: 'flex-start' },
   nextRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   timeRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
-  quickGrid: { flexDirection: 'row', gap: Spacing.sm },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   quickItem: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
     alignItems: 'center',
     gap: 6,
     paddingVertical: Spacing.md,

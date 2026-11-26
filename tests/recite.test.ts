@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
-import { alignWords, combineOpinions, similarity, stripFormulas, summarize, tokenize, toWords } from '../src/lib/recite/align';
+import { alignWords, combineOpinions, stripFormulas, summarize, tokenize, toWords } from '../src/lib/recite/align';
 import { resampleTo16k, Segmenter } from '../src/lib/recite/segmenter';
 import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags } from '../src/lib/recite/session';
 

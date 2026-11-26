@@ -142,6 +142,9 @@ open_page quran "islamapp://quran"
 open_page sura2 "islamapp://sura/2"
 open_page hadith "islamapp://hadith"
 open_page hadith-detail "islamapp://hadith/66535"
+open_page hadith-thema "islamapp://hadith/category/134"
+open_page hadith-sammlung "islamapp://hadith/collection/mt"
+open_page hadith-favoriten "islamapp://hadith/favorites"
 open_page qibla "islamapp://qibla"
 open_page tasbih "islamapp://tasbih"
 open_page calendar "islamapp://calendar"
@@ -151,8 +154,11 @@ open_page prayer-settings "islamapp://prayer-settings"
 open_page sources "islamapp://sources"
 open_page more "islamapp://more"
 
-# Dua & Zikr
+# Dua & Zikr (jetzt ein Tab)
 open_page duas "islamapp://duas"
+
+# Rezitation prüfen: Beispiel-Ergebnis (ohne Mikrofon)
+open_page recite-beispiel "islamapp://recite?demo=1" 8
 
 # Rezitation prüfen: Modell laden und Selbsttest (Al-Fatiha 1:2)
 open_page recite "islamapp://recite?sura=1&aya=1" 8
@@ -160,7 +166,8 @@ echo "Internet im Emulator:"; adb shell ping -c 1 -W 3 github.com 2>&1 | tail -2
 scroll_tap_text "Modell herunterladen" 0.7
 if wait_gone "Erkennung einrichten" 180; then
   scroll_tap_text "Erkennung testen" 0.85
-  wait_text "Erkannt:" 90
+  # Selbsttest: Pausen-Erkennung + Erkennung mit beiden Suchverfahren (im x86-Emulator langsam)
+  wait_text "Erkannt:" 480
   check_running selbsttest
   echo "================ Selbsttest der Erkennung ================"
   adb logcat -d | grep -E "\[Selbsttest\]|\[Rezitation\]|RNWhisper|whisper_" | tail -20

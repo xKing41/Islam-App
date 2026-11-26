@@ -26,7 +26,16 @@ export function useQuranPlayer(sura: number, ayas: number, reciterId: string, ti
   const subsRef = useRef<{ remove: () => void }[]>([]);
   const [state, setState] = useState<PlayerState>(initial);
   const titleRef = useRef(title);
-  titleRef.current = title;
+  useEffect(() => {
+    titleRef.current = title;
+  }, [title]);
+  // Beim Wechsel von Sure oder Rezitator: Anzeige zurücksetzen (während des Renderns, wie von React empfohlen)
+  const playerKey = `${sura}|${reciterId}`;
+  const [prevKey, setPrevKey] = useState(playerKey);
+  if (prevKey !== playerKey) {
+    setPrevKey(playerKey);
+    setState(initial);
+  }
 
   const teardown = useCallback(() => {
     subsRef.current.forEach((s) => s.remove());
@@ -49,7 +58,6 @@ export function useQuranPlayer(sura: number, ayas: number, reciterId: string, ti
   // Beim Wechsel von Sure oder Rezitator: Wiedergabe beenden.
   useEffect(() => {
     teardown();
-    setState(initial);
   }, [sura, reciterId, teardown]);
 
   const playFrom = useCallback(

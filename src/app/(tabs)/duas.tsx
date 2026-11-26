@@ -35,7 +35,8 @@ export default function DuasScreen() {
   );
 
   return (
-    <Screen>
+    <Screen topInset>
+      <AppText variant="title">{t.duas.title}</AppText>
       <Segmented<Tab>
         options={[
           { value: 'quran', label: t.duas.quran },

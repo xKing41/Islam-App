@@ -5,8 +5,9 @@ import {
   useAudioPlayer,
   useAudioStream,
 } from 'expo-audio';
+import { File, Paths } from 'expo-file-system';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,14 +20,40 @@ import { ayahAudioUrl } from '@/lib/quran/audio';
 import { getSura } from '@/lib/quran/data';
 import { getSuraMeta, SURAS, suraTitle } from '@/lib/quran/meta';
 import { normalizeArabic, normalizeLatin } from '@/lib/quran/text';
-import { alignWords, stripFormulas, summarize, toWords, type WordStatus } from '@/lib/recite/align';
-import { getWhisper, releaseWhisper, selfTest, transcribePcm } from '@/lib/recite/engine';
+import { alignWords, type Extra, summarize, type Token, tokenize, type WordStatus } from '@/lib/recite/align';
+import { type Decoder, getWhisper, releaseWhisper, selfTest, transcribePcm } from '@/lib/recite/engine';
 import { downloadModel, isModelReady, MODEL } from '@/lib/recite/model';
-import { resampleTo16k, Segmenter } from '@/lib/recite/segmenter';
+import { concat, resampleTo16k, Segmenter } from '@/lib/recite/segmenter';
+import { evaluateSession, finishAlignment, pcmToWav, segmentsForRange, segmentsWithFlags } from '@/lib/recite/session';
 import { useQuranStore } from '@/store/quran';
 import { useSettings } from '@/store/settings';
 
 type Phase = 'idle' | 'loading' | 'listening' | 'finishing' | 'done';
+type Seg = { pcm: Int16Array; tokens: Token[]; alt?: Token[] };
+
+/**
+ * Hauptdurchgang und Gegenprobe der Erkennung. Markiert der Hauptdurchgang ein Wort, wird der Abschnitt
+ * ein zweites Mal mit dem anderen Suchverfahren erkannt; hört die Gegenprobe das richtige Wort, gilt es
+ * als „unsicher“ statt als Fehler. Gemessen in scripts/recite-eval (Release „rezitation-auswertung“).
+ */
+const PRIMARY: Decoder = 'greedy';
+const SECOND_OPINION: Decoder | null = 'beam';
+
+/**
+ * Beispiel-Auswertung (Al-Fatiha) für „Beispiel ansehen“: zeigt, wie Fehler dargestellt werden –
+ * eine Selbstkorrektur, ein falscher Buchstabe, ein unsicheres Wort und ein ausgelassenes Wort.
+ */
+const DEMO_SEGMENTS: Seg[] = [
+  'أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ',
+  'الْحَمْدُ لِلَّهِ رَبِّ الْكَافِرِينَ رَبِّ الْعَالَمِينَ الرَّحْمَنِ الرَّحِيمِ',
+  'مَلِكِ يَوْمِ الدِّينِ',
+  'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمِ',
+  'صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ الضَّالِّينَ',
+].map((text, i) => ({
+  pcm: new Int16Array(0),
+  tokens: tokenize(i === 3 ? text.replace('نَسْتَعِينُ', 'نَسْتَعِيذُ') : text),
+  ...(i === 3 ? { alt: tokenize(text) } : {}),
+}));
 
 const MAX_AYAT = 20;
 const MAX_WORDS = 320;
@@ -51,79 +78,121 @@ function buildExpected(sura: number, startAya: number) {
     });
     ayat.push({ aya: a, from, to: words.length });
   }
+  const lastAya = ayat.length ? ayat[ayat.length - 1].aya : startAya;
   return {
     words,
     display,
     ayat,
-    startsWithBasmala: sura === 1 && startAya === 1,
+    formula: { expectedStartsWithBasmala: sura === 1 && startAya === 1, endsWithFatiha: sura === 1 && lastAya === 7 },
   };
 }
 
 export default function ReciteScreen() {
   const t = useT();
   const theme = useTheme();
-  const params = useLocalSearchParams<{ sura?: string; aya?: string }>();
+  const params = useLocalSearchParams<{ sura?: string; aya?: string; demo?: string }>();
   const lastRead = useQuranStore((s) => s.lastRead);
   const lang = useSettings((s) => s.language);
   const reciter = useSettings((s) => s.reciter);
 
-  const [sura, setSura] = useState(() => Number(params.sura) || lastRead?.sura || 1);
-  const [startAya, setStartAya] = useState(() => (params.sura ? Number(params.aya) || 1 : lastRead?.aya || 1));
+  const [sura, setSura] = useState(() => (params.demo === '1' ? 1 : Number(params.sura) || lastRead?.sura || 1));
+  const [startAya, setStartAya] = useState(() =>
+    params.demo === '1' ? 1 : params.sura ? Number(params.aya) || 1 : lastRead?.aya || 1,
+  );
   const [hidden, setHidden] = useState(false);
   const [modelReady, setModelReady] = useState(() => isModelReady());
   const [progress, setProgress] = useState<number | null>(null);
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [heard, setHeard] = useState<string[]>([]);
+  const [phase, setPhase] = useState<Phase>(() => (params.demo === '1' ? 'done' : 'idle'));
+  const [segs, setSegs] = useState<Seg[]>(() => (params.demo === '1' ? DEMO_SEGMENTS : []));
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [level, setLevel] = useState(0);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [demo, setDemo] = useState(params.demo === '1');
 
   const segmenter = useRef<Segmenter | null>(null);
   const queue = useRef<Int16Array[]>([]);
   const processing = useRef(false);
   const stopped = useRef(true);
-  const heardRef = useRef<string[]>([]);
+  const segsRef = useRef<Seg[]>(params.demo === '1' ? DEMO_SEGMENTS : []);
+  const altTried = useRef<Set<number>>(new Set());
   const lastLevel = useRef(0);
+  const recFile = useRef<File | null>(null);
 
   const meta = getSuraMeta(sura);
   const expected = useMemo(() => buildExpected(sura, startAya), [sura, startAya]);
-  const alignment = useMemo(
-    () => alignWords(expected.words, stripFormulas(heard, expected.startsWithBasmala)),
-    [expected, heard],
-  );
+  const expectedRef = useRef(expected);
+  useEffect(() => {
+    expectedRef.current = expected;
+  }, [expected]);
+  const result = useMemo(() => evaluateSession(expected.words, segs, expected.formula), [expected, segs]);
+  // Nach dem Stoppen: angefangener, nicht beendeter Vers → fehlende Wörter
+  const alignment = phase === 'done' ? finishAlignment(result.alignment, expected.ayat) : result.alignment;
   const summary = summarize(alignment);
   const player = useAudioPlayer();
 
   const reset = useCallback(() => {
-    heardRef.current = [];
-    setHeard([]);
+    segsRef.current = [];
+    altTried.current = new Set();
+    setSegs([]);
     setError(null);
+    setDemo(false);
     setPhase('idle');
   }, []);
 
-  useEffect(() => {
+  /** Neue Auswahl (Sure/Startvers): bisheriges Ergebnis verwerfen. */
+  function select(s: number, a: number) {
+    if (s === sura && a === startAya) return;
     reset();
-  }, [sura, startAya, reset]);
+    setSura(s);
+    setStartAya(a);
+  }
+
+  function showDemo() {
+    reset();
+    setSura(1);
+    setStartAya(1);
+    segsRef.current = DEMO_SEGMENTS;
+    setSegs(DEMO_SEGMENTS);
+    setDemo(true);
+    setPhase('done');
+  }
 
   const processQueue = useCallback(async () => {
     if (processing.current) return;
     processing.current = true;
     setBusy(true);
     try {
-      while (queue.current.length) {
-        const seg = queue.current.shift()!;
-        const text = await transcribePcm(seg);
-        console.log('[Rezitation] erkannt:', text);
-        heardRef.current = [...heardRef.current, ...toWords(text)];
-        setHeard(heardRef.current);
+      for (;;) {
+        // 1) neue Abschnitte erkennen
+        const pcm = queue.current.shift();
+        if (pcm) {
+          const text = await transcribePcm(pcm, PRIMARY);
+          console.log('[Rezitation] erkannt:', text);
+          segsRef.current = [...segsRef.current, { pcm, tokens: tokenize(text) }];
+          setSegs(segsRef.current);
+          continue;
+        }
+        // 2) Gegenprobe für Abschnitte mit markierten Wörtern
+        if (!SECOND_OPINION) break;
+        const res = evaluateSession(expectedRef.current.words, segsRef.current, expectedRef.current.formula);
+        const k = segmentsWithFlags(res).find((x) => !altTried.current.has(x));
+        if (k === undefined) break;
+        altTried.current.add(k);
+        setChecking(true);
+        const text = await transcribePcm(segsRef.current[k].pcm, SECOND_OPINION);
+        console.log('[Rezitation] Gegenprobe:', text);
+        segsRef.current = segsRef.current.map((x, i) => (i === k ? { ...x, alt: tokenize(text) } : x));
+        setSegs(segsRef.current);
       }
     } catch (e) {
       setError(`${t.recite.error} ${String(e)}`);
     } finally {
       processing.current = false;
       setBusy(false);
+      setChecking(false);
       if (stopped.current && queue.current.length === 0) setPhase((p) => (p === 'finishing' ? 'done' : p));
     }
   }, [t.recite.error]);
@@ -190,8 +259,9 @@ export default function ReciteScreen() {
       allowsRecording: true,
       playsInSilentMode: true,
     }).catch(() => {});
-    heardRef.current = [];
-    setHeard([]);
+    segsRef.current = [];
+    altTried.current = new Set();
+    setSegs([]);
     queue.current = [];
     segmenter.current = new Segmenter({ sampleRate: 16000 });
     stopped.current = false;
@@ -218,6 +288,9 @@ export default function ReciteScreen() {
         stream.stop();
       } catch {}
       releaseWhisper();
+      try {
+        recFile.current?.delete();
+      } catch {}
     },
     [stream],
   );
@@ -241,8 +314,18 @@ export default function ReciteScreen() {
     setTestResult(t.recite.loadingModel);
     try {
       const r = await selfTest();
-      console.log('[Selbsttest] erkannt:', r.text, `${r.ms} ms`);
-      setTestResult(t.recite.selfTestResult(r.text.trim(), (r.ms / 1000).toFixed(1)));
+      const exp = tokenize(getSura(1).arClean[1]).map((x) => x.norm);
+      const score = (text: string) => summarize(alignWords(exp, tokenize(text))).correct;
+      console.log('[Selbsttest] erkannt:', r.greedy, `${r.msGreedy} ms`, '| Strahlsuche:', r.beam, `${r.msBeam} ms`, `| ${r.segments} Abschnitt(e)`);
+      setTestResult(
+        t.recite.selfTestResult2(
+          r.greedy.trim(),
+          (r.msGreedy / 1000).toFixed(1),
+          (r.msBeam / 1000).toFixed(1),
+          Math.min(score(r.greedy), score(r.beam)),
+          exp.length,
+        ),
+      );
     } catch (e) {
       console.log('[Selbsttest] Fehler', String(e));
       setTestResult(`${t.recite.error} ${String(e)}`);
@@ -254,26 +337,74 @@ export default function ReciteScreen() {
     player.play();
   }
 
+  /** Spielt die eigene Aufnahme der Abschnitte ab, die zu diesem Vers gehören. */
+  async function playMine(from: number, to: number) {
+    const ks = segmentsForRange(result, from, to);
+    if (!ks.length) return;
+    try {
+      const pcm = concat(ks.map((k) => segsRef.current[k].pcm));
+      try {
+        recFile.current?.delete();
+      } catch {}
+      const f = new File(Paths.cache, `meine-rezitation-${Date.now()}.wav`);
+      if (!f.exists) f.create();
+      await f.write(pcmToWav(pcm));
+      recFile.current = f;
+      player.replace({ uri: f.uri });
+      player.play();
+    } catch (e) {
+      setError(`${t.recite.error} ${String(e)}`);
+    }
+  }
+
   const listening = phase === 'listening';
   const title = suraTitle(meta, lang);
+  type Note = { key: string; text: string; tone: 'danger' | 'warning' | 'textSecondary' };
+  // Arabische Wörter in deutschen/türkischen Sätzen als eigene Richtungsinsel einfügen (sonst ordnet
+  // Android die Satzteile von rechts nach links um); \u200E erzwingt eine Zeile von links nach rechts.
+  const ar = (w: string) => `\u2068${w}\u2069`;
+  const note = (key: string, text: string, tone: Note['tone']): Note => ({ key, text: `\u200E${text}`, tone });
+  const extraOwner = (e: Extra) => (e.before > 0 ? e.before - 1 : 0);
   const mistakes = expected.ayat
-    .map((a) => ({
-      aya: a.aya,
-      items: alignment.status
-        .slice(a.from, a.to)
-        .map((s, k) => ({ s, i: a.from + k }))
-        .filter((x) => x.s === 'wrong' || x.s === 'missing'),
-    }))
-    .filter((a) => a.items.length);
+    .map((a) => {
+      const notes: Note[] = [];
+      for (let i = a.from; i < a.to; i++) {
+        const st = alignment.status[i];
+        const word = expected.display[i];
+        if (st === 'wrong') notes.push(note(`w${i}`, t.recite.wrongWord(ar(word), ar(alignment.heardFor[i] ?? '')), 'danger'));
+        else if (st === 'missing')
+          notes.push(note(`m${i}`, i >= result.alignment.reached ? t.recite.unfinished(ar(word)) : t.recite.missingWord(ar(word)), 'danger'));
+        else if (st === 'uncertain')
+          notes.push(
+            note(
+              `u${i}`,
+              alignment.heardFor[i] ? t.recite.uncertainWord(ar(word), ar(alignment.heardFor[i] ?? '')) : t.recite.uncertainMissing(ar(word)),
+              'warning',
+            ),
+          );
+      }
+      for (const e of alignment.extras) {
+        if (extraOwner(e) < a.from || extraOwner(e) >= a.to || e.kind === 'repeat') continue;
+        if (e.kind === 'corrected') notes.push(note(`c${e.heardIndex}`, t.recite.correctedWord(ar(e.word)), 'textSecondary'));
+        else
+          notes.push(
+            note(
+              `x${e.heardIndex}`,
+              e.uncertain ? t.recite.uncertainExtra(ar(e.word)) : t.recite.extraWord(ar(e.word)),
+              e.uncertain ? 'warning' : 'danger',
+            ),
+          );
+      }
+      return { aya: a.aya, from: a.from, to: a.to, notes };
+    })
+    .filter((a) => a.notes.length);
 
   const wordStyle = (s: WordStatus, i: number) => {
     if (s === 'correct') return { color: theme.success };
     if (s === 'wrong') return { color: theme.danger, textDecorationLine: 'underline' as const };
-    if (s === 'missing')
-      return {
-        color: theme.accent,
-        textDecorationLine: 'line-through' as const,
-      };
+    if (s === 'missing') return { color: theme.danger, textDecorationLine: 'line-through' as const, opacity: 0.8 };
+    if (s === 'uncertain')
+      return { color: theme.warning, textDecorationLine: 'underline' as const, textDecorationStyle: 'dotted' as const };
     const isNext = listening && i === alignment.reached;
     if (hidden)
       return {
@@ -285,6 +416,22 @@ export default function ReciteScreen() {
       backgroundColor: isNext ? theme.highlight : undefined,
     };
   };
+
+  /** Zusätzlich gesagte Wörter erscheinen klein an der Stelle, an der sie gesagt wurden. */
+  const extrasAfter = (i: number) =>
+    alignment.extras
+      .filter((e) => e.before === i + 1 && e.kind !== 'repeat')
+      .map((e) => (
+        <Text
+          key={`e${e.heardIndex}`}
+          style={{
+            fontSize: 18,
+            color: e.kind === 'corrected' ? theme.textMuted : e.uncertain ? theme.warning : theme.danger,
+            textDecorationLine: e.kind === 'corrected' ? 'line-through' : 'none',
+          }}>
+          {` +${e.word} `}
+        </Text>
+      ));
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -309,7 +456,7 @@ export default function ReciteScreen() {
           </Pressable>
           <View style={styles.pickerRow}>
             <AppText style={{ flex: 1 }}>{t.recite.startVerse}</AppText>
-            <Stepper signed={false} value={startAya} min={1} max={meta.ayas} onChange={(v) => !listening && setStartAya(v)} />
+            <Stepper signed={false} value={startAya} min={1} max={meta.ayas} onChange={(v) => !listening && select(sura, v)} />
           </View>
           <Segmented
             options={[
@@ -359,12 +506,13 @@ export default function ReciteScreen() {
         <View
           style={{
             flexDirection: 'row',
-            gap: Spacing.lg,
+            flexWrap: 'wrap',
+            gap: Spacing.md,
             justifyContent: 'center',
           }}>
           <Legend color={theme.success} label={t.recite.legendCorrect} />
-          <Legend color={theme.danger} label={t.recite.legendWrong} />
-          <Legend color={theme.accent} label={t.recite.legendMissing} />
+          <Legend color={theme.danger} label={`${t.recite.legendWrong} / ${t.recite.legendMissing} / ${t.recite.legendExtra}`} />
+          <Legend color={theme.warning} label={t.recite.legendUncertain} />
         </View>
 
         {/* Verse */}
@@ -374,13 +522,15 @@ export default function ReciteScreen() {
               <NumberBadge n={a.aya} size={32} />
             </View>
             <Text style={styles.arabic}>
+              {a.from === 0 ? extrasAfter(-1) : null}
               {expected.display.slice(a.from, a.to).map((w, k) => {
                 const i = a.from + k;
                 return (
-                  <Text key={i} style={wordStyle(alignment.status[i], i)}>
-                    {w}
+                  <Fragment key={i}>
+                    <Text style={wordStyle(alignment.status[i], i)}>{w}</Text>
                     {k < a.to - a.from - 1 ? ' ' : ''}
-                  </Text>
+                    {extrasAfter(i)}
+                  </Fragment>
                 );
               })}
             </Text>
@@ -388,46 +538,71 @@ export default function ReciteScreen() {
         ))}
 
         {/* Ergebnis */}
-        {phase === 'done' && heard.length > 0 ? (
+        {phase === 'done' && segs.length > 0 ? (
           <Card style={{ gap: Spacing.md }}>
-            <AppText variant="heading">{t.recite.resultTitle}</AppText>
-            <AppText variant="title" color={summary.wrong + summary.missing === 0 ? 'success' : 'text'}>
-              {summary.correct + summary.wrong + summary.missing > 0
-                ? `${Math.round((100 * summary.correct) / (summary.correct + summary.wrong + summary.missing))} %`
+            <AppText variant="heading">{demo ? t.recite.demoTitle : t.recite.resultTitle}</AppText>
+            {demo ? (
+              <AppText variant="caption" color="textSecondary">
+                {t.recite.demoNote}
+              </AppText>
+            ) : null}
+            <AppText
+              variant="title"
+              color={summary.wrong + summary.missing + summary.extra === 0 ? (summary.uncertain ? 'warning' : 'success') : 'text'}>
+              {summary.correct + summary.wrong + summary.missing + summary.uncertain > 0
+                ? `${Math.round((100 * summary.correct) / (summary.correct + summary.wrong + summary.missing + summary.uncertain))} %`
                 : '–'}
             </AppText>
             <AppText color="textSecondary">
-              {t.recite.resultLine(summary.correct, summary.correct + summary.wrong + summary.missing)}
+              {t.recite.resultLine(summary.correct, summary.correct + summary.wrong + summary.missing + summary.uncertain)}
+              {summary.uncertain ? ` · ${t.recite.uncertainCount(summary.uncertain)}` : ''}
               {summary.extra ? ` · ${t.recite.extraWords(summary.extra)}` : ''}
             </AppText>
+            {summary.repeats ? (
+              <AppText variant="caption" color="textMuted">
+                {t.recite.repeats(summary.repeats)}
+              </AppText>
+            ) : null}
             {mistakes.length === 0 ? (
               <AppText color="success">{t.recite.noMistakes}</AppText>
             ) : (
-              mistakes.map((m) => (
-                <View key={m.aya} style={{ gap: 4 }}>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}>
-                    <AppText variant="label">{t.recite.verse(m.aya)}</AppText>
-                    <Pressable onPress={() => play(m.aya)} style={styles.listen} accessibilityRole="button">
-                      <Icon name="play-circle-outline" size={18} color={theme.primary} />
-                      <AppText variant="caption" color="primary" style={{ fontWeight: '600' }}>
-                        {t.recite.listen}
+              <>
+                <AppText variant="small" color="textSecondary">
+                  {t.recite.mistakesTitle}
+                </AppText>
+                {mistakes.map((m) => (
+                  <View key={m.aya} style={[styles.mistake, { borderColor: theme.border }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+                      <AppText variant="label" style={{ flex: 1 }}>
+                        {t.recite.verse(m.aya)}
                       </AppText>
-                    </Pressable>
+                      <Pressable onPress={() => play(m.aya)} style={styles.listen} accessibilityRole="button" hitSlop={6}>
+                        <Icon name="play-circle-outline" size={18} color={theme.primary} />
+                        <AppText variant="caption" color="primary" style={{ fontWeight: '600' }}>
+                          {t.recite.reference}
+                        </AppText>
+                      </Pressable>
+                      {!demo && segmentsForRange(result, m.from, m.to).length ? (
+                        <Pressable onPress={() => playMine(m.from, m.to)} style={styles.listen} accessibilityRole="button" hitSlop={6}>
+                          <Icon name="account-voice" size={18} color={theme.primary} />
+                          <AppText variant="caption" color="primary" style={{ fontWeight: '600' }}>
+                            {t.recite.mine}
+                          </AppText>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                    {m.notes.map((n) => (
+                      <AppText
+                        key={n.key}
+                        variant="caption"
+                        color={n.tone}
+                        style={{ fontSize: 15, lineHeight: 24, textAlign: 'left', writingDirection: 'ltr' }}>
+                        {n.text}
+                      </AppText>
+                    ))}
                   </View>
-                  {m.items.map((x) => (
-                    <AppText key={x.i} variant="caption" color={x.s === 'wrong' ? 'danger' : 'accent'} style={{ fontSize: 15 }}>
-                      {x.s === 'wrong'
-                        ? t.recite.wrongWord(expected.display[x.i], alignment.heardFor[x.i] ?? '')
-                        : t.recite.missingWord(expected.display[x.i])}
-                    </AppText>
-                  ))}
-                </View>
-              ))
+                ))}
+              </>
             )}
             <Button title={t.recite.again} icon="restart" variant="secondary" onPress={reset} />
           </Card>
@@ -436,6 +611,7 @@ export default function ReciteScreen() {
         <AppText variant="caption" color="textMuted">
           {t.recite.limits}
         </AppText>
+        {phase === 'idle' ? <Button title={t.recite.demo} icon="eye-outline" variant="ghost" onPress={showDemo} /> : null}
 
         {modelReady ? (
           <View style={{ gap: Spacing.sm }}>
@@ -451,9 +627,10 @@ export default function ReciteScreen() {
       <MicBar
         phase={phase}
         busy={busy}
+        checking={checking}
         level={level}
         disabled={!modelReady || progress !== null}
-        summary={`${summary.correct} ✓ · ${summary.wrong} ✗ · ${summary.missing} –`}
+        summary={`${summary.correct} ✓ · ${summary.wrong + summary.missing + summary.extra} ✗${summary.uncertain ? ` · ${summary.uncertain} ?` : ''}`}
         onStart={start}
         onStop={stop}
       />
@@ -463,8 +640,7 @@ export default function ReciteScreen() {
         lang={lang}
         onClose={() => setPickerOpen(false)}
         onPick={(s) => {
-          setSura(s);
-          setStartAya(1);
+          select(s, 1);
           setPickerOpen(false);
         }}
       />
@@ -493,6 +669,7 @@ function Legend({ color, label }: { color: string; label: string }) {
 function MicBar({
   phase,
   busy,
+  checking,
   level,
   disabled,
   summary,
@@ -501,6 +678,7 @@ function MicBar({
 }: {
   phase: Phase;
   busy: boolean;
+  checking: boolean;
   level: number;
   disabled: boolean;
   summary: string;
@@ -514,13 +692,15 @@ function MicBar({
   const status =
     phase === 'loading'
       ? t.recite.loadingModel
-      : listening
-        ? busy
-          ? t.recite.processing
-          : t.recite.listening
-        : phase === 'finishing'
-          ? t.recite.processing
-          : t.recite.start;
+      : checking
+        ? t.recite.checking
+        : listening
+          ? busy
+            ? t.recite.processing
+            : t.recite.listening
+          : phase === 'finishing'
+            ? t.recite.processing
+            : t.recite.start;
   return (
     <View
       style={[
@@ -659,6 +839,7 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
   },
   listen: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  mistake: { gap: 4, paddingTop: Spacing.sm, borderTopWidth: StyleSheet.hairlineWidth },
   micBar: {
     position: 'absolute',
     left: Spacing.md,

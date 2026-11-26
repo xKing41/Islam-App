@@ -78,10 +78,18 @@ Verfügbar: Mishary Rashid Alafasy, Mahmoud Khalil Al-Husary (auch im Lernmodus 
 
 Bei einzelnen Hadithen gibt HadeethEnc die Einstufung oder Quelle nur auf Arabisch an. Die App zeigt sie dann so, wie sie dort steht.
 
+**Ordnung in der App** (abgeleitet, die Texte selbst bleiben unverändert):
+
+- **Themen:** der Themenbaum von HadeethEnc (7 Hauptthemen, darunter Unterthemen). Einige deutsche und türkische Themen-Namen von HadeethEnc enthalten Tippfehler oder sind unübersetzt geblieben (z. B. „Fraid - Erbracht“, „Stops and Starts“). Nur diese Navigations-Überschriften werden korrigiert, siehe `scripts/hadith-titles.mjs`.
+- **Einstufung (Sahih/Hasan):** aus dem arabischen Urteil von HadeethEnc (صحيح → Sahih, حسن → Hasan). Das vollständige Urteil steht in der Detailansicht im Wortlaut.
+- **Sammlungen:** aus der arabischen Quellenangabe, z. B. „متفق عليه“ → Buchari und Muslim (Muttafaqun ʿalayh), „رواه أبو داود والترمذي“ → Abu Dawud und Tirmidhi. Die vollständige Angabe steht in der Detailansicht im Wortlaut.
+- **Hadith des Tages:** jeden Tag ein anderer authentischer (sahih) Hadith aus den Themen Koran sowie Charakter und Benehmen.
+
 ## 5a. Dua & Zikr
 
 - **Aus dem Koran:** eine Auswahl bekannter Bittgebete (vor allem „Rabbanā“-Verse), siehe `src/lib/duas.ts`. Die App zeigt den Vers **unverändert** aus den Koran-Quellen oben (Tanzil, QuranEnc), mit Umschrift von Tanzil. Hier wird nur festgelegt, *welche* Verse gezeigt werden. Jede Stelle lässt sich im Koran-Leser nachprüfen, und ein Test prüft, dass die Verse existieren und die erwarteten Worte enthalten.
 - **Aus der Sunnah:** die Themen „Dua und Zikr“ der HadeethEnc-Enzyklopädie, zum Beispiel Morgen- und Abendgedenken, Gedenken beim Gebet, überlieferte Bittgebete sowie Bittgebete in schwierigen Zeiten, jeweils mit arabischem Text, Übersetzung, Quelle, Einstufung und Erläuterung. Im Türkischen gibt es dazu über 100 Hadithe, im Deutschen über 50.
+- **Vers des Tages** (Startseite): eine feste Auswahl bekannter, für sich verständlicher Verse (`src/lib/daily.ts`), unverändert aus den Koran-Quellen oben. Ein Test prüft, dass alle Stellen existieren.
 - **Nicht verwendet:** Hisnul Muslim. Ein geprüfter, frei verfügbarer Datensatz mit deutscher und türkischer Übersetzung war nicht zu finden, und selbst übersetzen kommt bei religiösen Texten nicht infrage.
 
 ## 5b. Rezitation prüfen: Spracherkennung auf dem Gerät

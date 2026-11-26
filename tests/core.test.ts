@@ -198,5 +198,56 @@ describe('Hadith-Daten', () => {
         assert.ok(item.title.length > 0);
       }
     });
+
+    it(`${lang}: Einstufung und Sammlungen passen zur arabischen Quellenangabe`, () => {
+      const dir = join(root, 'src/data/hadith', lang);
+      const index = JSON.parse(readFileSync(join(dir, 'index.json'), 'utf8'));
+      const chunks = new Map<number, Record<string, { gradeAr: string; attribution: string }>>();
+      const raw = new Map<number, { attribution_ar: string; grade_ar: string }>(
+        readFileSync(join(root, `data/sources/hadeethenc/hadeeths_${lang}.jsonl`), 'utf8')
+          .split('\n')
+          .filter(Boolean)
+          .map((l) => JSON.parse(l))
+          .map((h) => [Number(h.id), h]),
+      );
+      for (const item of index.items) {
+        if (!chunks.has(item.c)) chunks.set(item.c, JSON.parse(readFileSync(join(dir, `c${String(item.c).padStart(2, '0')}.json`), 'utf8')));
+        const src = raw.get(item.id)!;
+        // Einstufung: nur aus dem arabischen Urteil
+        if (/صحيح/.test(src.grade_ar)) assert.equal(item.g, 's', `${item.id}: ${src.grade_ar}`);
+        else if (/حسن/.test(src.grade_ar)) assert.equal(item.g, 'h', `${item.id}: ${src.grade_ar}`);
+        // Muttafaqun ʿalayh = Buchari und Muslim
+        if (/متفق علي/.test(src.attribution_ar)) {
+          assert.equal(item.mt, 1);
+          assert.ok(item.s.includes('bu') && item.s.includes('mu'), `${item.id}`);
+        }
+        if (/^رواه مسلم$/.test(src.attribution_ar.trim())) assert.deepEqual(item.s, ['mu']);
+        if (/^رواه البخاري$/.test(src.attribution_ar.trim())) assert.deepEqual(item.s, ['bu']);
+        assert.ok(item.s.length > 0, `${item.id} ohne Sammlung`);
+      }
+    });
+
+    it(`${lang}: Themen-Namen ohne Tippfehler und englische Reste`, () => {
+      const index = JSON.parse(readFileSync(join(root, 'src/data/hadith', lang, 'index.json'), 'utf8'));
+      for (const c of index.categories) {
+        if (!c.count) continue;
+        assert.ok(!/\b(the|and|of|Rulings|Stance|Virtue|Merits?)\b/.test(c.title), `${c.id}: ${c.title}`);
+        assert.ok(!/[A-ZÄÖÜ]{2}[a-zäöü]/.test(c.title), `${c.id}: ${c.title}`);
+      }
+    });
   }
+});
+
+describe('Vers des Tages', () => {
+  it('verweist nur auf existierende Verse und wechselt täglich', async () => {
+    const { DAILY_VERSES, verseOfTheDay } = await import('../src/lib/daily');
+    for (const v of DAILY_VERSES) {
+      const meta = getSuraMeta(v.sura);
+      assert.ok(v.from >= 1 && v.to >= v.from && v.to <= meta.ayas, `${v.sura}:${v.from}-${v.to}`);
+    }
+    const a = verseOfTheDay(new Date(2026, 0, 1));
+    const b = verseOfTheDay(new Date(2026, 0, 2));
+    assert.notDeepEqual(a, b);
+    assert.deepEqual(verseOfTheDay(new Date(2026, 0, 1, 23, 59)), a);
+  });
 });

@@ -5,7 +5,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 import { useScheme, useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n';
@@ -17,13 +17,11 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 setupNotificationHandler();
 
 function useSettingsHydrated() {
-  const [hydrated, setHydrated] = useState(() => useSettings.persist.hasHydrated());
-  useEffect(() => {
-    const unsub = useSettings.persist.onFinishHydration(() => setHydrated(true));
-    setHydrated(useSettings.persist.hasHydrated());
-    return unsub;
-  }, []);
-  return hydrated;
+  return useSyncExternalStore(
+    (onChange) => useSettings.persist.onFinishHydration(onChange),
+    () => useSettings.persist.hasHydrated(),
+    () => useSettings.persist.hasHydrated(),
+  );
 }
 
 /** Plant Erinnerungen neu, sobald sich relevante Einstellungen ändern (mit kurzer Verzögerung). */
@@ -87,6 +85,9 @@ export default function RootLayout() {
         <Stack.Screen name="sura/[id]" options={{ title: '' }} />
         <Stack.Screen name="hadith/[id]" options={{ title: t.hadith.title }} />
         <Stack.Screen name="hadith/category/[id]" options={{ title: t.hadith.title }} />
+        <Stack.Screen name="hadith/collection/[key]" options={{ title: t.hadith.title }} />
+        <Stack.Screen name="hadith/favorites" options={{ title: t.hadith.favorites }} />
+        <Stack.Screen name="qibla" options={{ title: t.qibla.title }} />
         <Stack.Screen name="tasbih" options={{ title: t.tasbih.title }} />
         <Stack.Screen name="calendar" options={{ title: t.calendar.title }} />
         <Stack.Screen name="ramadan" options={{ title: t.ramadan.title }} />
@@ -94,7 +95,6 @@ export default function RootLayout() {
         <Stack.Screen name="prayer-settings" options={{ title: t.prayerSettings.title }} />
         <Stack.Screen name="location" options={{ title: t.location.title }} />
         <Stack.Screen name="sources" options={{ title: t.sources.title }} />
-        <Stack.Screen name="duas" options={{ title: t.duas.title }} />
         <Stack.Screen name="recite" options={{ title: t.recite.title }} />
       </Stack>
     </ThemeProvider>
