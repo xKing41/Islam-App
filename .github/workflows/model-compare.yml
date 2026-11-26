@@ -1,0 +1,124 @@
+# Vergleicht Kandidaten für das Erkennungsmodell von „Rezitation prüfen“: Hugging-Face-Modell -> ggml
+# (whisper.cpp v1.9.3, wie in der App) -> q8_0 -> Erkennung ganzer Suren von Rezitatoren, die nicht in
+# den Trainingsdaten von Tarteel sind (mp3quran.net) -> Fehlalarme mit dem Wortabgleich der App.
+name: Modellvergleich
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: Kandidaten (JSON-Liste mit repo, base, slug)
+        default: >-
+          [{"repo":"tarteel-ai/whisper-base-ar-quran","base":"openai/whisper-base","slug":"tarteel-base"},
+          {"repo":"deepdml/whisper-base-ar-quran-mix-norm","base":"openai/whisper-base","slug":"deepdml-base"},
+          {"repo":"deepdml/whisper-small-ar-quran-mix-norm","base":"openai/whisper-small","slug":"deepdml-small"},
+          {"repo":"NightPrince/whisper-small-quran-tashkeel","base":"openai/whisper-small","slug":"nightprince-small"},
+          {"repo":"Baselhany/Quran_Whisper_base_fine_tune","base":"openai/whisper-base","slug":"baselhany-base"},
+          {"repo":"jodijhouranda/ayata-whisper-quran-v2","base":"openai/whisper-base","slug":"ayata-base"}]
+
+permissions:
+  contents: read
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        model: ${{ fromJSON(inputs.models) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Umwandeln
+        run: |
+          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet transformers huggingface_hub safetensors numpy
+          git clone --depth 1 --branch v1.9.3 https://github.com/ggml-org/whisper.cpp
+          git clone --depth 1 https://github.com/openai/whisper openai-whisper
+          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF
+          cmake --build whisper.cpp/build -j 4 --target whisper-quantize
+          python scripts/model/prepare_model.py "${{ matrix.model.repo }}" "${{ matrix.model.base }}" hf
+          mkdir -p conv out
+          python whisper.cpp/models/convert-h5-to-ggml.py hf openai-whisper conv
+          whisper.cpp/build/bin/whisper-quantize conv/ggml-model.bin out/model.bin q8_0
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: modell-${{ matrix.model.slug }}
+          path: out/model.bin
+          retention-days: 7
+
+  eval:
+    needs: convert
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        model: ${{ fromJSON(inputs.models) }}
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: modell-${{ matrix.model.slug }}
+          path: m
+      - name: Erkennen
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+          npm ci --no-audit --no-fund
+          scripts/recite-eval/build-rtool.sh rtool
+          node scripts/recite-eval/mp3quran-jobs.mjs > jobs.json
+          start=$(date +%s)
+          npx tsx scripts/recite-eval/transcribe.ts --rtool ./rtool --model m/model.bin --work work \
+            --jobs jobs.json --variants greedy --threads 4 --shard ${{ matrix.shard }}/4
+          echo "ZEIT ${{ matrix.model.slug }} ${{ matrix.shard }}: $(( $(date +%s) - start )) s"
+          cp work/transcripts.json t-${{ matrix.model.slug }}-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: t-${{ matrix.model.slug }}-${{ matrix.shard }}
+          path: t-*.json
+
+  report:
+    needs: eval
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: t-*
+          merge-multiple: true
+          path: parts
+      - name: Bewerten
+        run: |
+          for slug in $(ls parts | sed -E 's/^t-(.*)-[0-9]+\.json$/\1/' | sort -u); do
+            node -e "
+              const fs = require('fs');
+              const all = {};
+              for (const f of fs.readdirSync('parts').filter((x) => x.startsWith('t-$slug-'))) {
+                const d = JSON.parse(fs.readFileSync('parts/' + f, 'utf8'));
+                Object.assign(all, d);
+              }
+              fs.writeFileSync('m-$slug.json', JSON.stringify(all));
+            "
+            echo "===== MODELL $slug ====="
+            npx tsx scripts/recite-eval/score.ts m-$slug.json --out r-$slug.md --examples 15 | grep -E '^\| streng'
+          done
+          for f in r-*.md; do echo "## $f" >> "$GITHUB_STEP_SUMMARY"; cat "$f" >> "$GITHUB_STEP_SUMMARY"; done
+          echo "===== ROHDATEN (gzip+base64) ====="
+          tar czf - m-*.json | base64 -w 3000 | sed 's/^/ROH:/'
+          echo "===== ENDE ====="
