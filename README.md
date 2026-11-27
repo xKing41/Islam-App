@@ -9,7 +9,7 @@ Eine persönliche Android-App, die die wichtigsten islamischen Werkzeuge an eine
 | 🕌 **Gebetszeiten** | Berechnung nach Standort (GPS oder Stadtliste), Methode Diyanet/DITIB als Standard, Countdown zum nächsten Gebet, Feinjustierung pro Gebet |
 | 🔔 **Erinnerungen** | Benachrichtigung zur Gebetszeit mit Azan (2 Aufnahmen + Kurzfassung), optional Vorab-Erinnerung, „Wecker-Modus“ für maximale Zuverlässigkeit |
 | 📖 **Koran** | Arabischer Uthmani-Text (Tanzil) mit Übersetzung (Bubenheim/Elyas bzw. Diyanet) und optionaler Umschrift (okunuşu), Suren-/Dschuz-Liste, Suche, Lesezeichen, „Weiterlesen“ |
-| 🎧 **Rezitation** | Vers für Vers mit 8 Rezitatoren (u. a. Alafasy, Husary, Minshawi), Mitlesen mit Hervorhebung, Vers wiederholen, Wiedergabe im Hintergrund |
+| 🎧 **Rezitation** | Vers für Vers mit 40 Rezitationen von 35 Rezitatoren (Murattal, Mujawwad, Lernmodus; u. a. Alafasy, Husary, Minshawi, Abdul Basit, Sudais, Ghamdi), Auswahl mit Suche und Hörprobe, Mitlesen mit Hervorhebung, Vers wiederholen, Wiedergabe im Hintergrund |
 | 📜 **Hadithe** | Über 600 (DE) bzw. 2.100 (TR) Hadithe von HadeethEnc mit arabischem Text, Erläuterung und Lehren. Geordnet nach Themen (mit Unterthemen) und nach Sammlungen (Buchari & Muslim, Sahih al-Buchari, Sahih Muslim, Sunan …), Einstufung Sahih/Hasan auf einen Blick, Volltextsuche (auch arabisch), Hadith des Tages, Favoriten |
 | 🧭 **Qibla** | Kompass mit Kaaba-Richtung, Entfernung, Vibration bei richtiger Ausrichtung |
 | 📿 **Tesbih** | Zähler mit Ziel (33/99/100), Tesbihat nach dem Gebet (33·33·34), Vibration |

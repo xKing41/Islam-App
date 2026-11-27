@@ -66,9 +66,22 @@ def render(src, dst, start, end, pre_filters, fade_out):
         cut = os.path.join(tmp, 'cut.wav')
         ff('-ss', f'{start:.3f}', '-t', f'{length:.3f}', '-i', src, '-ac', '1', '-ar', '44100', *(['-af', pre_filters] if pre_filters else []), cut)
         m = measure(cut)
-        norm = (f'loudnorm=I={TARGET_I}:TP={TARGET_TP}:LRA=11:measured_I={m["input_i"]}:measured_TP={m["input_tp"]}'
-                f':measured_LRA={m["input_lra"]}:measured_thresh={m["input_thresh"]}:offset={m["target_offset"]}:linear=true')
-        chain = f'{norm},afade=t=in:d=0.05,afade=t=out:st={max(0, length - fade_out):.3f}:d={fade_out}'
+        # Sanft verdichten (nur Stellen deutlich über der mittleren Lautheit), dann verstärken bis zur
+        # Ziel-Lautheit; verbleibende Spitzen fängt ein Begrenzer ab (0,5 dB Reserve für das Kodieren).
+        thr = 10 ** ((float(m['input_i']) + 6) / 20)
+        limit = 10 ** ((TARGET_TP - 0.5) / 20)
+        gain = TARGET_I - float(m['input_i'])
+
+        def dyn(g):
+            return (f'acompressor=threshold={thr:.5f}:ratio=2.5:attack=15:release=250:knee=4,'
+                    f'volume={g:.2f}dB,alimiter=limit={limit:.4f}:attack=3:release=80:level=false')
+
+        for _ in range(4):  # Begrenzer/Verdichter senken die Lautheit etwas – nachregeln
+            got = float(measure(cut, dyn(gain))['input_i'])
+            if abs(got - TARGET_I) < 0.25:
+                break
+            gain += TARGET_I - got
+        chain = f'{dyn(gain)},afade=t=in:d=0.05,afade=t=out:st={max(0, length - fade_out):.3f}:d={fade_out}'
         ff('-i', cut, '-af', chain, '-ar', '44100', '-ac', '1', '-c:a', 'libvorbis', '-q:a', '3', dst)
     after = measure(dst)
     data = open(dst, 'rb').read()

@@ -150,6 +150,11 @@ open_page tasbih "islamapp://tasbih"
 open_page calendar "islamapp://calendar"
 open_page ramadan "islamapp://ramadan"
 open_page settings "islamapp://settings"
+# Rezitator-Auswahl mit Hörprobe (Sure 112 aus dem Internet)
+open_page reciters "islamapp://reciters"
+tap_text "Hörprobe abspielen: Abdul Basit Abdus-Samad"
+sleep 8
+check_running reciters-hoerprobe
 open_page prayer-settings "islamapp://prayer-settings"
 open_page sources "islamapp://sources"
 open_page more "islamapp://more"
@@ -179,6 +184,15 @@ open_page sura1 "islamapp://sura/1"
 tap_text "Abspielen"
 sleep 10
 check_running audio
+
+# Hörprobe einer Azan-Stimme (Ton aus der App, Android-Ressource)
+open_page prayer-settings-hoerprobe "islamapp://prayer-settings" 6
+scroll_tap_text "Medina" 0.7
+sleep 2
+tap_text "Hörprobe abspielen: Medina"
+sleep 6
+check_running azan-hoerprobe
+echo "Hörproben im Protokoll:"; adb logcat -d | grep "\[Hörprobe\]" | tail -5
 
 # Test-Erinnerung mit Azan-Kanal auslösen
 open_page prayer-settings-test "islamapp://prayer-settings" 6

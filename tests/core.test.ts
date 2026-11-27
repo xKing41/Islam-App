@@ -284,3 +284,57 @@ describe('Vers des Tages', () => {
     assert.deepEqual(verseOfTheDay(new Date(2026, 0, 1, 23, 59)), a);
   });
 });
+
+describe('Azan-Stimmen', () => {
+  it('jede Tondatei liegt in assets/sounds und ist in app.json eingebunden', async () => {
+    const { AZAN_FILES } = await import('../src/lib/azan');
+    const app = JSON.parse(readFileSync(join(root, 'app.json'), 'utf8'));
+    const plugin = app.expo.plugins.find((p: unknown) => Array.isArray(p) && p[0] === 'expo-notifications');
+    const listed = new Set((plugin[1].sounds as string[]).map((f) => f.replace('./assets/sounds/', '').replace('.ogg', '')));
+    const files = new Set(readdirSync(join(root, 'assets/sounds')).map((f) => f.replace('.ogg', '')));
+    for (const f of AZAN_FILES) {
+      assert.ok(files.has(f), `Datei fehlt: assets/sounds/${f}.ogg`);
+      assert.ok(listed.has(f), `nicht in app.json: ${f}`);
+      // Android-Ressourcennamen: nur Kleinbuchstaben, Ziffern, Unterstrich
+      assert.match(f, /^[a-z][a-z0-9_]*$/);
+    }
+    assert.equal(listed.size, AZAN_FILES.length, 'app.json enthält Töne, die die App nicht kennt');
+  });
+
+  it('Texte für jede Stimme (Deutsch und Türkisch)', async () => {
+    const { AZAN_VOICES } = await import('../src/lib/azan');
+    const { de } = await import('../src/i18n/de');
+    const { tr } = await import('../src/i18n/tr');
+    for (const v of AZAN_VOICES) {
+      assert.ok(de.azan.voices[v.id].name && tr.azan.voices[v.id].name, v.id);
+    }
+  });
+
+  it('Länge, Abwechseln und Fadschr-Ruf', async () => {
+    const { AZAN_VOICES, FAJR_AZAN, azanSound, parseAzanSound, soundForPrayer } = await import('../src/lib/azan');
+    // bisherige Werte bleiben gültig
+    assert.deepEqual(parseAzanSound('azan_short'), { voice: AZAN_VOICES[0], length: 'short' });
+    assert.equal(parseAzanSound('azan_a')?.length, 'full');
+    assert.equal(parseAzanSound('default'), null);
+    const day = new Date(2026, 10, 27, 13, 0);
+    const off = { rotate: false, fajrAzan: false };
+    assert.equal(soundForPrayer('azan_b', off, 1, false, day), 'azan_b');
+    assert.equal(soundForPrayer('default', { rotate: true, fajrAzan: true }, 0, true, day), 'default');
+    // Abwechseln: fünf Gebete eines Tages nacheinander verschiedene Stimmen, gleiche Länge, gleichbleibend je Datum
+    const rot = { rotate: true, fajrAzan: false };
+    const sounds = [0, 1, 2, 3, 4].map((i) => soundForPrayer('azan_short', rot, i, i === 0, day));
+    for (const sound of sounds) assert.equal(parseAzanSound(sound)?.length, 'short');
+    for (let i = 1; i < sounds.length; i++) assert.notEqual(sounds[i], sounds[i - 1]);
+    assert.deepEqual([0, 1, 2, 3, 4].map((i) => soundForPrayer('azan_short', rot, i, i === 0, new Date(2026, 10, 27, 5, 0))), sounds);
+    assert.equal(new Set(Array.from({ length: 10 }, (_, i) => soundForPrayer('azan_a', rot, i % 5, false, new Date(2026, 0, 1 + Math.floor(i / 5))))).size,
+      Math.min(10, AZAN_VOICES.length));
+    // Fadschr-Ruf nur bei voller Länge und nur zum Fadschr
+    if (FAJR_AZAN) {
+      const fajr = { rotate: false, fajrAzan: true };
+      assert.equal(soundForPrayer('azan_a', fajr, 0, true, day), FAJR_AZAN.file);
+      assert.equal(soundForPrayer('azan_a', fajr, 1, false, day), 'azan_a');
+      assert.equal(soundForPrayer('azan_short', fajr, 0, true, day), 'azan_short');
+    }
+    assert.equal(azanSound(AZAN_VOICES[0], 'short'), 'azan_short');
+  });
+});

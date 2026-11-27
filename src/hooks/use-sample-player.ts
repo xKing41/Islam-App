@@ -39,9 +39,15 @@ export function useSamplePlayer() {
       stop();
       setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false, interruptionMode: 'doNotMix' }).catch(() => {});
       const pl = createAudioPlaylist({ sources });
+      let started = false;
       pl.addListener('playlistStatusUpdate', (st) => {
         if (ref.current !== pl) return;
         setLoading(!st.playing || st.isBuffering);
+        if (st.playing && !started) {
+          started = true;
+          // Im Protokoll sichtbar (Start-Test im Emulator prüft, dass Hörproben wirklich abspielen)
+          console.log(`[Hörprobe] ${key}: spielt (${Math.round(st.duration)} s)`);
+        }
         if (st.didJustFinish && st.currentIndex >= sources.length - 1) stop();
       });
       ref.current = pl;

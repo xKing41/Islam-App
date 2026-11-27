@@ -8,21 +8,33 @@ import * as Notifications from 'expo-notifications';
 import { AndroidImportance, AndroidNotificationVisibility } from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import { getDictionary } from '@/i18n';
+import { type Dictionary, getDictionary } from '@/i18n';
+import { AZAN_FILES, isAzanSound, parseAzanSound, soundForPrayer } from '@/lib/azan';
 import { getDayTimes, PRAYER_KEYS } from '@/lib/prayer-times';
 import { addDays, formatTime } from '@/lib/time';
 import { type NotificationSound, type PrayerKey, type SettingsState, useSettings } from '@/store/settings';
 
 const DAYS_AHEAD = 7;
 
-const CHANNELS: Record<NotificationSound, { id: string; sound: string | null; name: string }> = {
-  azan_a: { id: 'prayer-azan-a', sound: 'azan_a.ogg', name: 'Azan 1' },
-  azan_b: { id: 'prayer-azan-b', sound: 'azan_b.ogg', name: 'Azan 2' },
-  azan_short: { id: 'prayer-azan-short', sound: 'azan_short.ogg', name: 'Azan (kurz)' },
-  default: { id: 'prayer-default', sound: 'default', name: 'Gebetszeit' },
-  silent: { id: 'prayer-silent', sound: null, name: 'Gebetszeit (stumm)' },
-};
+type Channel = { id: string; sound: string | null; name: string };
+
+/** Kanal-Kennungen der ersten Töne bleiben unverändert, damit bestehende Kanäle weiter gelten. */
+const LEGACY_CHANNEL_IDS: Record<string, string> = { azan_a: 'prayer-azan-a', azan_b: 'prayer-azan-b', azan_short: 'prayer-azan-short' };
 const PRE_CHANNEL = { id: 'prayer-pre', name: 'Vorab-Erinnerung' };
+
+/** Kanal zu einer Tondatei („azan_medina_short“ → Kanal „prayer-azan-medina-short“ mit Ton „azan_medina_short.ogg“). */
+export function channelFor(sound: string, t: Dictionary): Channel {
+  if (sound === 'silent') return { id: 'prayer-silent', sound: null, name: t.prayerSettings.sounds.silent };
+  if (!isAzanSound(sound)) return { id: 'prayer-default', sound: 'default', name: t.prayerSettings.sounds.default };
+  const parsed = parseAzanSound(sound);
+  const name = parsed
+    ? `${t.azan.channel}: ${t.azan.voices[parsed.voice.id as keyof typeof t.azan.voices].name}${parsed.length === 'short' ? ` (${t.azan.short})` : ''}`
+    : `${t.azan.channel}: ${t.azan.fajr}`; // Fadschr-Ruf
+  return { id: LEGACY_CHANNEL_IDS[sound] ?? `prayer-${sound.replace(/_/g, '-')}`, sound: `${sound}.ogg`, name };
+}
+
+/** Alle Töne, die eine Erinnerung verwenden kann. */
+export const ALL_SOUNDS: string[] = [...AZAN_FILES, 'default', 'silent'];
 
 let handlerSet = false;
 
@@ -40,9 +52,14 @@ export function setupNotificationHandler() {
   });
 }
 
-export async function ensureChannels() {
+/** Legt die Kanäle für die angegebenen Töne an (bzw. aktualisiert ihren Namen). */
+export async function ensureChannels(t: Dictionary, sounds: Iterable<string> = ALL_SOUNDS) {
   if (Platform.OS !== 'android') return;
-  for (const ch of Object.values(CHANNELS)) {
+  const seen = new Set<string>();
+  for (const sound of sounds) {
+    const ch = channelFor(sound, t);
+    if (seen.has(ch.id)) continue;
+    seen.add(ch.id);
     await Notifications.setNotificationChannelAsync(ch.id, {
       name: ch.name,
       importance: ch.sound ? AndroidImportance.MAX : AndroidImportance.DEFAULT,
@@ -53,7 +70,7 @@ export async function ensureChannels() {
     });
   }
   await Notifications.setNotificationChannelAsync(PRE_CHANNEL.id, {
-    name: PRE_CHANNEL.name,
+    name: t.prayerSettings.preReminder,
     importance: AndroidImportance.HIGH,
     sound: 'default',
   });
@@ -106,11 +123,13 @@ export async function reschedulePrayerNotifications(s: SettingsState): Promise<n
   const perm = await Notifications.getPermissionsAsync();
   if (!perm.granted) return 0;
 
-  await ensureChannels();
   const t = getDictionary(s.language);
+  await ensureChannels(t);
   const cfg = { ...s.location, method: s.method, madhab: s.madhab, highLatRule: s.highLatRule, adjustments: s.adjustments };
   const now = Date.now();
   const delivery = s.reliableAlarms ? 'alarmClock' : 'bestEffort';
+  const azanOpts = { rotate: s.azanRotate, fajrAzan: s.fajrAzan };
+  const prayersWithAzan: PrayerKey[] = PRAYER_KEYS.filter((k) => k !== 'sunrise');
   let count = 0;
 
   for (let d = 0; d < DAYS_AHEAD; d++) {
@@ -121,7 +140,8 @@ export async function reschedulePrayerNotifications(s: SettingsState): Promise<n
       const at = times[key];
       const name = t.prayers[key as PrayerKey];
       if (at.getTime() > now + 5000) {
-        const ch = CHANNELS[pref.sound] ?? CHANNELS.default;
+        const file = soundForPrayer(pref.sound, azanOpts, Math.max(0, prayersWithAzan.indexOf(key)), key === 'fajr', at);
+        const ch = channelFor(file, t);
         await Notifications.scheduleNotificationAsync({
           content: {
             title: t.prayerSettings.notifTitle(name),
@@ -166,9 +186,9 @@ export async function reschedulePrayerNotifications(s: SettingsState): Promise<n
 /** Test-Erinnerung in 5 Sekunden mit dem gewählten Ton. */
 export async function sendTestNotification(s: SettingsState, sound: NotificationSound) {
   if (Platform.OS === 'web') return;
-  await ensureChannels();
   const t = getDictionary(s.language);
-  const ch = CHANNELS[sound];
+  await ensureChannels(t);
+  const ch = channelFor(sound, t);
   await Notifications.scheduleNotificationAsync({
     content: {
       title: t.prayerSettings.notifTitle(t.prayers.dhuhr),

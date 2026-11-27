@@ -114,9 +114,6 @@ export const tr: Dictionary = {
     remindersHint: 'Uygulama vakit girince seni uyarır – istersen ezan ile.',
     sound: 'Ses',
     sounds: {
-      azan_a: 'Ezan (uzun, kayıt 1)',
-      azan_b: 'Ezan (uzun, kayıt 2)',
-      azan_short: 'Ezan (kısa)',
       default: 'Standart bildirim sesi',
       silent: 'Sessiz (sadece bildirim)',
     },
@@ -139,6 +136,25 @@ export const tr: Dictionary = {
     preNotifTitle: (p: string, m: number) => `${p} vaktine ${m} dakika`,
     approxNote:
       'Vakitler cihazda hesaplanır. "Diyanet" yöntemi, Diyanet (DİTİB) resmî vakitlerine yaklaşık bir hesaplamadır. Bir kez camiinin takvimiyle karşılaştır ve gerekirse ince ayar yap.',
+  },
+  azan: {
+    channel: 'Ezan',
+    voices: {
+      a: { name: 'Ses 1', detail: 'Wikimedia Commons' },
+      b: { name: 'Ses 2', detail: 'Wikimedia Commons' },
+      medina: { name: 'Medine', detail: 'Mescid-i Nebevî’den kayıt' },
+    },
+    length: 'Uzunluk',
+    full: 'Tam',
+    short: 'Kısa',
+    duration: (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')} dk.`,
+    rotate: 'Sesleri değiştir',
+    rotateHint: 'Her namaz vaktinde başka bir ses.',
+    fajr: 'Sabah ezanı',
+    fajrHint: 'Sabah namazında „es-salâtu hayrun mine’n-nevm“ ile okunan ezan (Namaz uykudan hayırlıdır).',
+    fajrSample: 'Sabah ezanını dinle',
+    play: 'Örneği dinle',
+    stop: 'Örneği durdur',
   },
   methods: {
     Turkey: 'Diyanet (Türkiye/DİTİB)',

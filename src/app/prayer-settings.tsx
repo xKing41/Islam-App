@@ -9,6 +9,8 @@ import {
   ChoiceList,
   ListGroup,
   ListRow,
+  PlayButton,
+  Radio,
   Screen,
   SectionTitle,
   Segmented,
@@ -16,7 +18,9 @@ import {
   SwitchRow,
 } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { useSamplePlayer } from '@/hooks/use-sample-player';
 import { useT } from '@/i18n';
+import { AZAN_VOICES, type AzanLength, azanSound, FAJR_AZAN, parseAzanSound } from '@/lib/azan';
 import {
   getPermissionState,
   type PermissionState,
@@ -28,7 +32,6 @@ import { PRAYER_KEYS } from '@/lib/prayer-times';
 import { type CalcMethod, type HighLatRule, type NotificationSound, useSettings } from '@/store/settings';
 
 const METHODS: CalcMethod[] = ['Turkey', 'MuslimWorldLeague', 'NorthAmerica', 'Egyptian', 'Karachi', 'UmmAlQura', 'MoonsightingCommittee'];
-const SOUNDS: NotificationSound[] = ['azan_a', 'azan_b', 'azan_short', 'default', 'silent'];
 
 export default function PrayerSettingsScreen() {
   const t = useT();
@@ -44,6 +47,10 @@ export default function PrayerSettingsScreen() {
 
   // Ein gemeinsamer Ton für alle Gebete (außer Sonnenaufgang).
   const currentSound = s.notify.dhuhr.sound;
+  const azan = parseAzanSound(currentSound);
+  const length: AzanLength = azan?.length ?? 'short';
+  const sample = useSamplePlayer();
+  const fajrAzan = FAJR_AZAN;
   function setSoundForAll(sound: NotificationSound) {
     for (const key of PRAYER_KEYS) {
       if (key !== 'sunrise') s.setNotify(key, { sound });
@@ -111,11 +118,85 @@ export default function PrayerSettingsScreen() {
       </ListGroup>
 
       <SectionTitle>{t.prayerSettings.sound}</SectionTitle>
-      <ChoiceList
-        options={SOUNDS.map((v) => ({ value: v, label: t.prayerSettings.sounds[v] }))}
-        value={currentSound}
-        onChange={setSoundForAll}
-      />
+      <ListGroup>
+        {AZAN_VOICES.map((v) => {
+          const label = t.azan.voices[v.id];
+          const playing = sample.current === v.id;
+          return (
+            <ListRow
+              key={v.id}
+              title={label.name}
+              subtitle={`${label.detail} · ${t.azan.duration(length === 'short' ? v.shortSeconds : v.seconds)}`}
+              onPress={() => setSoundForAll(azanSound(v, length))}
+              accessibilityLabel={`${t.azan.channel}: ${label.name}`}
+              right={
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+                  {isNative ? (
+                    <PlayButton
+                      playing={playing}
+                      loading={sample.loading}
+                      onPress={() => sample.toggle(v.id, [azanSound(v, length)])}
+                      label={`${playing ? t.azan.stop : t.azan.play}: ${label.name}`}
+                    />
+                  ) : null}
+                  <Radio selected={azan?.voice.id === v.id} />
+                </View>
+              }
+            />
+          );
+        })}
+        {(['default', 'silent'] as const).map((v, i) => (
+          <ListRow
+            key={v}
+            title={t.prayerSettings.sounds[v]}
+            last={i === 1}
+            onPress={() => setSoundForAll(v)}
+            right={<Radio selected={currentSound === v} />}
+          />
+        ))}
+      </ListGroup>
+      {azan ? (
+        <ListGroup>
+          <View style={{ padding: Spacing.lg, gap: Spacing.sm }}>
+            <AppText variant="label">{t.azan.length}</AppText>
+            <Segmented<AzanLength>
+              options={[
+                { value: 'short', label: t.azan.short },
+                { value: 'full', label: t.azan.full },
+              ]}
+              value={length}
+              onChange={(l) => setSoundForAll(azanSound(azan.voice, l))}
+            />
+          </View>
+          <SwitchRow
+            title={t.azan.rotate}
+            subtitle={t.azan.rotateHint}
+            value={s.azanRotate}
+            onValueChange={(v) => s.set({ azanRotate: v })}
+            last={!fajrAzan || length !== 'full'}
+          />
+          {fajrAzan && length === 'full' ? (
+            <>
+              <SwitchRow title={t.azan.fajr} subtitle={t.azan.fajrHint} value={s.fajrAzan} onValueChange={(v) => s.set({ fajrAzan: v })} />
+              {isNative ? (
+                <ListRow
+                  title={t.azan.fajrSample}
+                  subtitle={t.azan.duration(fajrAzan.seconds)}
+                  last
+                  right={
+                    <PlayButton
+                      playing={sample.current === 'fajr'}
+                      loading={sample.loading}
+                      onPress={() => sample.toggle('fajr', [fajrAzan.file])}
+                      label={`${sample.current === 'fajr' ? t.azan.stop : t.azan.play}: ${t.azan.fajr}`}
+                    />
+                  }
+                />
+              ) : null}
+            </>
+          ) : null}
+        </ListGroup>
+      ) : null}
       {isNative ? (
         <Button
           title={t.prayerSettings.testNotification}

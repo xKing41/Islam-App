@@ -115,9 +115,6 @@ export const de = {
     remindersHint: 'Die App erinnert dich zur Gebetszeit – auf Wunsch mit Azan.',
     sound: 'Ton',
     sounds: {
-      azan_a: 'Azan (lang, Aufnahme 1)',
-      azan_b: 'Azan (lang, Aufnahme 2)',
-      azan_short: 'Azan (kurz)',
       default: 'Standard-Benachrichtigungston',
       silent: 'Stumm (nur Hinweis)',
     },
@@ -140,6 +137,25 @@ export const de = {
     preNotifTitle: (p: string, m: number) => `${p} in ${m} Minuten`,
     approxNote:
       'Die Zeiten werden auf dem Gerät berechnet. Die Methode „Diyanet“ ist eine Annäherung an die offiziellen Zeiten der Diyanet (DITIB). Vergleiche sie einmal mit deiner Moschee und passe sie bei Bedarf mit der Feinjustierung an.',
+  },
+  azan: {
+    channel: 'Azan',
+    voices: {
+      a: { name: 'Stimme 1', detail: 'Wikimedia Commons' },
+      b: { name: 'Stimme 2', detail: 'Wikimedia Commons' },
+      medina: { name: 'Medina', detail: 'Aufnahme aus der Prophetenmoschee' },
+    },
+    length: 'Länge',
+    full: 'Vollständig',
+    short: 'Kurz',
+    duration: (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')} Min.`,
+    rotate: 'Stimmen abwechseln',
+    rotateHint: 'Jedes Gebet mit einer anderen Stimme.',
+    fajr: 'Fadschr-Ruf am Morgen',
+    fajrHint: 'Beim Morgengebet der Ruf mit „as-salātu chairun mina n-naum“ (Das Gebet ist besser als der Schlaf).',
+    fajrSample: 'Fadschr-Ruf anhören',
+    play: 'Hörprobe abspielen',
+    stop: 'Hörprobe stoppen',
   },
   methods: {
     Turkey: 'Diyanet (Türkei/DITIB)',

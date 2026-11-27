@@ -4,6 +4,7 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { ComponentProps, ReactNode } from 'react';
 import {
+  ActivityIndicator,
   type ColorValue,
   Pressable,
   ScrollView,
@@ -315,6 +316,49 @@ export function ChoiceList<T extends string | number>({
       ))}
     </ListGroup>
   );
+}
+
+/** Runder Abspiel-/Stopp-Knopf für Hörproben (mit Ladeanzeige). */
+export function PlayButton({
+  playing,
+  loading,
+  onPress,
+  label,
+}: {
+  playing: boolean;
+  loading?: boolean;
+  onPress: () => void;
+  label: string;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => ({
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: playing ? theme.primary : theme.primarySoft,
+        opacity: pressed ? 0.7 : 1,
+      })}>
+      {playing && loading ? (
+        <ActivityIndicator size="small" color={theme.onPrimary} />
+      ) : (
+        <Icon name={playing ? 'stop' : 'play'} size={22} color={playing ? theme.onPrimary : theme.primary} />
+      )}
+    </Pressable>
+  );
+}
+
+/** Auswahlkreis (gewählt/nicht gewählt). */
+export function Radio({ selected }: { selected: boolean }) {
+  const theme = useTheme();
+  return <Icon name={selected ? 'check-circle' : 'circle-outline'} color={selected ? theme.primary : theme.border} />;
 }
 
 export function Stepper({

@@ -257,13 +257,14 @@ def analyze(item_json, outdir):
 
 AR_DIAC = re.compile(r'[ً-ٰٟۖ-ۭ]')
 CHECKS = {
+    # Whisper schreibt „ḥayya ʿalā“ oft zusammengezogen („حيا الصلاة“) – daher großzügige Muster
     'allahu_akbar': r'الله ?اكبر',
     'shahada': r'اشهد ان ?لا ?اله ?الا ?الله',
     'rasul': r'محمدا? ?رسول ?الله',
-    'salah': r'حي علي الصلا',
-    'falah': r'حي علي الفلا',
-    'fajr': r'الصلاة? خير من النوم',
-    'shia_khayr_amal': r'خير العمل',
+    'salah': r'حي[اي]? ?(علي ?)?(ال)?صلا',
+    'falah': r'حي[اي]? ?(علي ?)?(ال)?فلا',
+    'fajr': r'صلاة? ?خير ?من ?(ال)?نوم',
+    'shia_khayr_amal': r'خير ?(ال)?عمل',
     'shia_ali': r'علي[اً]? ?ولي',
 }
 

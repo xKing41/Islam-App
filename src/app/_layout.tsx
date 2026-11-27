@@ -27,7 +27,7 @@ function useSettingsHydrated() {
 /** Plant Erinnerungen neu, sobald sich relevante Einstellungen ändern (mit kurzer Verzögerung). */
 function useNotificationSync(enabled: boolean) {
   const s = useSettings();
-  const key = JSON.stringify([s.location, s.method, s.madhab, s.highLatRule, s.adjustments, s.notify, s.preReminder, s.reliableAlarms, s.language]);
+  const key = JSON.stringify([s.location, s.method, s.madhab, s.highLatRule, s.adjustments, s.notify, s.preReminder, s.reliableAlarms, s.azanRotate, s.fajrAzan, s.language]);
   useEffect(() => {
     if (!enabled) return;
     const id = setTimeout(() => {

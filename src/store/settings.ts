@@ -2,6 +2,8 @@ import { getLocales } from 'expo-localization';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import type { AzanSound } from '@/lib/azan';
+
 import { appStorage } from './storage';
 
 export type Language = 'de' | 'tr';
@@ -16,7 +18,8 @@ export type CalcMethod =
   | 'UmmAlQura'
   | 'MoonsightingCommittee';
 export type HighLatRule = 'auto' | 'middleofthenight' | 'seventhofthenight' | 'twilightangle';
-export type NotificationSound = 'azan_a' | 'azan_b' | 'azan_short' | 'default' | 'silent';
+/** Ton der Erinnerung: eine Azan-Datei (siehe lib/azan.ts), der Standardton oder stumm. */
+export type NotificationSound = AzanSound | 'default' | 'silent';
 export type TranslationDe = 'de_bubenheim';
 export type TranslationTr = 'tr_diyanet' | 'tr_vakfi';
 
@@ -52,6 +55,10 @@ export type SettingsState = {
   notify: Record<PrayerKey, PrayerNotify>;
   preReminder: number;
   reliableAlarms: boolean;
+  /** Azan: jedes Gebet mit einer anderen Stimme */
+  azanRotate: boolean;
+  /** Azan (vollständig): beim Fadschr den Fadschr-Ruf mit „aṣ-ṣalātu khayrun mina n-naum“ */
+  fajrAzan: boolean;
   hijriOffset: number;
 };
 
@@ -96,6 +103,8 @@ export const defaultSettings: SettingsState = {
   },
   preReminder: 0,
   reliableAlarms: false,
+  azanRotate: false,
+  fajrAzan: true,
   hijriOffset: 0,
 };
 

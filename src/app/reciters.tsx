@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
-import { AppText, Card, Icon, ListGroup, ListRow, Screen, SectionTitle } from '@/components/ui';
+import { AppText, Card, Icon, ListGroup, ListRow, PlayButton, Radio, Screen, SectionTitle } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useSamplePlayer } from '@/hooks/use-sample-player';
 import { useTheme } from '@/hooks/use-theme';
@@ -94,27 +94,13 @@ export default function RecitersScreen() {
                   accessibilityLabel={`${r.name}, ${t.reciters.styles[r.style]}`}
                   right={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
-                      <Pressable
+                      <PlayButton
+                        playing={playing}
+                        loading={sample.loading}
                         onPress={() => sample.toggle(r.id, reciterSampleUrls(r.id))}
-                        hitSlop={10}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${playing ? t.reciters.stop : t.reciters.play}: ${r.name}`}
-                        style={({ pressed }) => ({
-                          width: 40,
-                          height: 40,
-                          borderRadius: 20,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: playing ? theme.primary : theme.primarySoft,
-                          opacity: pressed ? 0.7 : 1,
-                        })}>
-                        {playing && sample.loading ? (
-                          <ActivityIndicator size="small" color={theme.onPrimary} />
-                        ) : (
-                          <Icon name={playing ? 'stop' : 'play'} size={22} color={playing ? theme.onPrimary : theme.primary} />
-                        )}
-                      </Pressable>
-                      <Icon name={isSelected ? 'check-circle' : 'circle-outline'} color={isSelected ? theme.primary : theme.border} />
+                        label={`${playing ? t.reciters.stop : t.reciters.play}: ${r.name}`}
+                      />
+                      <Radio selected={isSelected} />
                     </View>
                   }
                 />
