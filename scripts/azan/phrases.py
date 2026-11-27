@@ -41,17 +41,23 @@ def segments(x, ps, sr=16000):
     return segs
 
 
+# Nur ein Hinweis auf die Art der Aufnahme („Dies ist ein Gebetsruf.“) – kein Wortlaut, damit die Prüfung
+# nichts vorgibt, was nicht gesungen wird. Abschalten mit PROMPT=''.
+PROMPT = os.environ.get('PROMPT', 'هذا أذان للصلاة.')
+
+
 def main():
     from faster_whisper import WhisperModel
     model = WhisperModel('large-v3', device='cpu', compute_type='int8', cpu_threads=os.cpu_count() or 4)
     for path in sys.argv[1:]:
         x, ps = load16k(path)
-        print(f'## {os.path.basename(path)}\n')
+        print(f'## {os.path.basename(path)} (Hinweis: {PROMPT or "keiner"})\n')
         all_text = []
         for a, b in segments(x, ps):
             clip = x[int(a * 16000): int(b * 16000)]
             out, _ = model.transcribe(clip, language='ar', beam_size=5, vad_filter=False,
-                                      condition_on_previous_text=False, temperature=0.0)
+                                      condition_on_previous_text=False, temperature=[0.0, 0.2, 0.4],
+                                      initial_prompt=PROMPT or None)
             text = ' '.join(s.text.strip() for s in out)
             all_text.append(text)
             print(f'- {a:6.1f}–{b:6.1f} s: {text}')
