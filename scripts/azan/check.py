@@ -179,8 +179,8 @@ def run(cmd):
 
 def loudness(path):
     r = run(['ffmpeg', '-hide_banner', '-nostats', '-i', path, '-vn', '-af', 'loudnorm=print_format=json', '-f', 'null', '-'])
-    t = r.stderr
-    j = json.loads(t[t.rindex('{'):])
+    m = re.search(r'\{[^{}]*"input_i"[^{}]*\}', r.stderr)
+    j = json.loads(m.group(0))
     return {k: float(j[k]) for k in ('input_i', 'input_tp', 'input_lra', 'input_thresh')}
 
 
@@ -227,8 +227,12 @@ def analyze(item_json, outdir):
     run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', src, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', wav16])
     run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', base + '.flac', '-lavfi',
          'showspectrumpic=s=1400x300:mode=combined:color=intensity:scale=log:legend=1', base + '.png'])
-    item['loudness'] = loudness(base + '.flac')
-    item['dynamics'] = dynamics(wav16)
+    for key, fn, arg in (('loudness', loudness, base + '.flac'), ('dynamics', dynamics, wav16)):
+        try:
+            item[key] = fn(arg)
+        except Exception as e:
+            print(f'{key} fehlgeschlagen: {e}', file=sys.stderr)
+            item[key] = {}
     t0 = time.time()
     item['transcript'] = transcribe(wav16)
     item['transcribe_s'] = round(time.time() - t0)
