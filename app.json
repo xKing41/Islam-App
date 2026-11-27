@@ -58,8 +58,16 @@
           "color": "#0E4D40",
           "sounds": [
             "./assets/sounds/azan_a.ogg",
+            "./assets/sounds/azan_short.ogg",
             "./assets/sounds/azan_b.ogg",
-            "./assets/sounds/azan_short.ogg"
+            "./assets/sounds/azan_b_short.ogg",
+            "./assets/sounds/azan_medina.ogg",
+            "./assets/sounds/azan_medina_short.ogg",
+            "./assets/sounds/azan_rast.ogg",
+            "./assets/sounds/azan_rast_short.ogg",
+            "./assets/sounds/azan_aaqib.ogg",
+            "./assets/sounds/azan_aaqib_short.ogg",
+            "./assets/sounds/azan_fajr.ogg"
           ]
         }
       ],

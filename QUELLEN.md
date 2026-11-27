@@ -140,13 +140,50 @@ Bei einzelnen Hadithen gibt HadeethEnc die Einstufung oder Quelle nur auf Arabis
 - **adhan-js** (Batoul Apps, MIT-Lizenz, v4.4.6): astronomische Berechnung der Gebetszeiten und der Qibla-Richtung. Standard ist die Methode „Turkey“, eine Annäherung an die Diyanet-Methode (Fajr 18°, Isha 17° plus die Diyanet-Zuschläge, *temkin*). Für Deutschland ist das eine **Annäherung**. Die offiziellen DITIB-/Diyanet-Zeiten können um einige Minuten abweichen, im Sommer bei Fajr und Isha auch mehr. Deshalb gibt es eine Feinjustierung pro Gebet.
 - **@umalqura/core** (MIT): Hijri-Datum nach dem Umm-al-Qura-Kalender. Der Diyanet-Kalender kann um einen Tag abweichen; dafür gibt es die Hijri-Korrektur (±2 Tage).
 
-## 7. Azan-Aufnahmen: Wikimedia Commons
+## 7. Azan-Aufnahmen: Wikimedia Commons und Freesound
 
-| Datei in der App | Original | Urheber | Lizenz | SHA-256 |
-|---|---|---|---|---|
-| `assets/sounds/azan_a.ogg` | [Beautiful adhan.ogg](https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg) (2:34) | Adam-synagda | CC0 | `35fe06b0…2a79` |
-| `assets/sounds/azan_b.ogg` | [Azan.ogg](https://commons.wikimedia.org/wiki/File:Azan.ogg) (3:03) | Andrewler | CC BY-SA 4.0 | `2163ceaf…23c3` |
-| `assets/sounds/azan_short.ogg` | Die ersten 28 Sekunden von „Beautiful adhan.ogg“ mit Ausblendung | Adam-synagda | CC0 | `39022381…954e` |
+Fünf Stimmen und ein Fadschr-Ruf. Alle Aufnahmen sind frei lizenziert (CC0, CC BY oder CC BY-SA) und liegen als OGG-Dateien in `assets/sounds`; Android spielt sie als Ton der Gebetserinnerung (ein Benachrichtigungskanal je Datei). Jede Stimme gibt es vollständig und als Kurzfassung, die an der ersten Atempause nach etwa 25–35 Sekunden endet (nach dem vierfachen „Allāhu akbar“ bzw. dem ersten Glaubensbekenntnis). Verwaltung in der App: `src/lib/azan.ts`.
+
+### So wurden die Aufnahmen ausgewählt (November 2026)
+
+1. **Suche:** 83 Kandidaten – 15 von Wikimedia Commons, 68 von Freesound (Suche nach adhan, azan, ezan, adzan, athan, muezzin, call to prayer; nur Lizenzen ohne „NC“ und ohne „Sampling+“). Werkzeug: `scripts/azan/check.py`, Ablauf `.github/workflows/azan-check.yml`, Bericht mit Spektrogrammen und verlustfreien Tonspuren im Release „azan-kandidaten“.
+2. **Klang:** Abstand zwischen Stimme und Grundrauschen gemessen (50-ms-Fenster, 95. gegen 10. Perzentil) und jedes Spektrogramm angesehen. 59 Aufnahmen hatten weniger als 25 dB Abstand – fast alle Feldaufnahmen mit Verkehr, Wind, Booten oder mehreren Moscheen gleichzeitig (auch alle Istanbul-Aufnahmen) – und schieden aus.
+3. **Wortlaut:** Whisper large-v3 schreibt jeden Ruf einzeln mit (an den Atempausen geschnitten, `scripts/azan/phrases.py`). Aufgenommen wurden nur vollständige sunnitische Gebetsrufe in der richtigen Reihenfolge – 4× Allāhu akbar, 2× Glaubensbekenntnis, 2× Bekenntnis zum Gesandten, 2× ḥayya ʿalā ṣ-ṣalāh, 2× ḥayya ʿalā l-falāḥ, 2× Allāhu akbar, 1× lā ilāha illā llāh – ohne Zusätze wie „ḥayya ʿalā khayri l-ʿamal“ oder „ashhadu anna ʿAliyyan waliyyu llāh“ und ohne doppeltes Schluss-„lā ilāha illā llāh“.
+   - Aussortiert, weil unvollständig: „Adhan, Great Mosque of Mecca – Jan 21, 2013“ (endet nach dem zweiten ḥayya ʿalā l-falāḥ).
+   - Aussortiert, weil sich der Wortlaut nicht belegen ließ (Whisper erkennt den stark verzierten Gesang nicht): Mardin (Freesound 168652) und Shalqar/Kasachstan (Commons).
+   - Lizenz nicht belastbar: „Call to prayer by Sabah Fakhry.mp3“ (als gemeinfrei markiert mit der Begründung, der Adhan sei alt – das gilt für den Text, nicht für die Aufnahme von 1985).
+4. **Bearbeitung** (`scripts/azan/make_sound.py`): Ausschnitt, sanfte Verdichtung lauter Stellen, Lautheit ca. −10,5 LUFS (wie die bisherigen Töne), Spitzen ≤ −1,5 dBTP, Ein-/Ausblenden, Mono, OGG Vorbis.
+
+### Stimmen
+
+| Stimme in der App | Dateien | Original | Urheber | Lizenz | Prüfung |
+|---|---|---|---|---|---|
+| Stimme 1 | `azan_a.ogg` (2:34), `azan_short.ogg` (0:28) | [Beautiful adhan.ogg](https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg) | Adam-synagda | CC0 | alle 12 Rufe erkannt |
+| Stimme 2 | `azan_b.ogg` (3:03), `azan_b_short.ogg` (0:32) | [Azan.ogg](https://commons.wikimedia.org/wiki/File:Azan.ogg) | Andrewler | CC BY-SA 4.0 | Rufe vollständig; am Ende das Bittgebet nach dem Adhan („Allāhumma rabba hādhihi d-daʿwati t-tāmma …“) |
+| Medina | `azan_medina.ogg` (3:06), `azan_medina_short.ogg` (0:35) | [33937 ejaz215 call-to-prayer-from-the-prophet-s-mo.ogg](https://commons.wikimedia.org/wiki/File:33937_ejaz215_call-to-prayer-from-the-prophet-s-mo.ogg) (ursprünglich Freesound 33937; laut Beschreibung aus der Prophetenmoschee) | ejaz215 | CC BY 3.0 | alle 12 Rufe erkannt |
+| Türkischer Ezan | `azan_rast.ogg` (4:52), `azan_rast_short.ogg` (0:27) | [الأذان (Adhan/Call to Prayer)](https://freesound.org/people/sonically_sound/sounds/639494/) (Freesound 639494; Schlagwörter: Turkish, ezan, cami, rast) | sonically_sound | CC0 | 11 von 12 Rufen erkannt; der zwölfte steht an der Stelle des ersten ḥayya ʿalā ṣ-ṣalāh, insgesamt sunnitischer Aufbau mit einfachem Schluss |
+| Aaqib Azeez | `azan_aaqib.ogg` (1:26), `azan_aaqib_short.ogg` (0:27) | [The Adhan - Muslim Call to Prayer - Aaqib Azeez.mp3](https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3) | Atcovi | CC BY-SA 4.0 | alle 12 Rufe erkannt |
+| Fadschr-Ruf (nur Morgengebet) | `azan_fajr.ogg` (3:51) | [Eid al-Fitr Fajr azan at Malmö Mosque - 19 August 2012.webm](https://commons.wikimedia.org/wiki/File:Eid_al-Fitr_Fajr_azan_at_Malm%C3%B6_Mosque_-_19_August_2012.webm) (Islamic Center Malmö, Muezzin Besim Azemi; auf YouTube unter CC BY veröffentlicht, von Commons geprüft) | Islamic Center Malmö | CC BY 3.0 | alle Rufe einschließlich 2× „aṣ-ṣalātu khayrun mina n-naum“; abgeschnitten vor dem anschließenden Segensgruß (Ṣalawāt) |
+
+Die bearbeiteten Dateien (gekürzt, Lautstärke angeglichen, Mono) stehen unter derselben Lizenz wie das jeweilige Original.
+
+„Stimmen abwechseln“ wechselt bei jedem Gebet zur nächsten der fünf Stimmen (für ein Datum immer gleich). „Fadschr-Ruf am Morgen“ gilt nur für die vollständige Länge, weil die Kurzfassung vor dem Satz „aṣ-ṣalātu khayrun mina n-naum“ endet.
+
+### SHA-256 der Dateien in der App
+
+```
+35fe06b08fe80505c550c33fed8a783fa9901ddc81ac884958b4be048f5b2a79  assets/sounds/azan_a.ogg
+39022381cab76d098185e07178dc7e0a999fda04aeffa3e55602d603d227954e  assets/sounds/azan_short.ogg
+2163ceafb8a05064a5ea5e1e0a7fac5fff958a21fcf830844d557d496b9b23c3  assets/sounds/azan_b.ogg
+df7a83cf42eb4c8fd5c17b363cd97713e62493fbe5942e70012c6cbbe18dc14f  assets/sounds/azan_b_short.ogg
+f3b0eb057da821213b77cafba8464ef58a0f9ad7775da4b8ad78d438968bbf92  assets/sounds/azan_medina.ogg
+ba4e7585b0f11cd95c356ac83b906748d52ba62f6a2877e7b464ae07538e255c  assets/sounds/azan_medina_short.ogg
+2086de7c4492f2cd26401a12edda2b079b47a5d4dec87c0b4b629bdb841dddc5  assets/sounds/azan_rast.ogg
+272089f07af57579dbf4c6e73e182e01c181aa492ff70a6852ba3f246a1a1c27  assets/sounds/azan_rast_short.ogg
+670f60b1996e8458cb42a3809e42b71676dc43f7a57ab36391444f1614c2cc1b  assets/sounds/azan_aaqib.ogg
+9b450da7106ab99af9c3d55f0f8ea38a3e4683035630e1908c3399223f0e1eca  assets/sounds/azan_aaqib_short.ogg
+97f17309790deedfc60ebaea26c684fc7802d3b9abea9e8d1ed5e3501f8714f6  assets/sounds/azan_fajr.ogg
+```
 
 ## 8. Schriften
 

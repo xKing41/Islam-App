@@ -181,7 +181,7 @@ export default function PrayerSettingsScreen() {
               {isNative ? (
                 <ListRow
                   title={t.azan.fajrSample}
-                  subtitle={t.azan.duration(fajrAzan.seconds)}
+                  subtitle={`${t.azan.fajrSource} · ${t.azan.duration(fajrAzan.seconds)}`}
                   last
                   right={
                     <PlayButton

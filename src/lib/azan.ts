@@ -13,15 +13,17 @@ type VoiceDef = { id: string; full: string; short: string; seconds: number; shor
 
 export const AZAN_VOICES = [
   { id: 'a', full: 'azan_a', short: 'azan_short', seconds: 154, shortSeconds: 28 },
-  { id: 'b', full: 'azan_b', short: 'azan_b_short', seconds: 183, shortSeconds: 30 },
-  { id: 'medina', full: 'azan_medina', short: 'azan_medina_short', seconds: 186, shortSeconds: 36 },
+  { id: 'b', full: 'azan_b', short: 'azan_b_short', seconds: 183, shortSeconds: 32 },
+  { id: 'medina', full: 'azan_medina', short: 'azan_medina_short', seconds: 186, shortSeconds: 35 },
+  { id: 'rast', full: 'azan_rast', short: 'azan_rast_short', seconds: 292, shortSeconds: 27 },
+  { id: 'aaqib', full: 'azan_aaqib', short: 'azan_aaqib_short', seconds: 86, shortSeconds: 27 },
 ] as const satisfies readonly VoiceDef[];
 
 /**
  * Fadschr-Ruf (mit „aṣ-ṣalātu khayrun mina n-naum“) – nur für das Morgengebet und nur in voller Länge
  * (eine Kurzfassung endet vor diesem Satz), nicht zum Abwechseln.
  */
-export const FAJR_AZAN = null as { file: string; seconds: number } | null;
+export const FAJR_AZAN = { file: 'azan_fajr', seconds: 231 } as { file: string; seconds: number } | null;
 
 export type AzanVoice = (typeof AZAN_VOICES)[number];
 export type AzanVoiceId = AzanVoice['id'];

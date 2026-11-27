@@ -117,12 +117,22 @@ export const SOURCES: SourceInfo[] = [
   },
   {
     name: 'Wikimedia Commons – Azan-Aufnahmen',
-    url: 'https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg',
+    url: 'https://commons.wikimedia.org/wiki/Category:Adhan',
     usedFor: {
-      de: 'Azan 1 + kurz: „Beautiful adhan.ogg“ (Adam-synagda, CC0). Azan 2: „Azan.ogg“ (Andrewler, CC BY-SA 4.0)',
-      tr: 'Ezan 1 + kısa: "Beautiful adhan.ogg" (Adam-synagda, CC0). Ezan 2: "Azan.ogg" (Andrewler, CC BY-SA 4.0)',
+      de: 'Stimme 1: „Beautiful adhan.ogg“ (Adam-synagda, CC0). Stimme 2: „Azan.ogg“ (Andrewler, CC BY-SA 4.0). Medina: „33937 ejaz215 call-to-prayer-from-the-prophet-s-mo.ogg“ (ejaz215, CC BY 3.0). Aaqib Azeez: „The Adhan - Muslim Call to Prayer - Aaqib Azeez.mp3“ (Atcovi, CC BY-SA 4.0). Fadschr-Ruf: „Eid al-Fitr Fajr azan at Malmö Mosque - 19 August 2012.webm“ (Islamic Center Malmö, CC BY 3.0). Gekürzt, Lautstärke angeglichen.',
+      tr: 'Ses 1: "Beautiful adhan.ogg" (Adam-synagda, CC0). Ses 2: "Azan.ogg" (Andrewler, CC BY-SA 4.0). Medine: "33937 ejaz215 call-to-prayer-from-the-prophet-s-mo.ogg" (ejaz215, CC BY 3.0). Aaqib Azeez: "The Adhan - Muslim Call to Prayer - Aaqib Azeez.mp3" (Atcovi, CC BY-SA 4.0). Sabah ezanı: "Eid al-Fitr Fajr azan at Malmö Mosque - 19 August 2012.webm" (Islamic Center Malmö, CC BY 3.0). Kısaltıldı, ses seviyesi eşitlendi.',
     },
-    license: { de: 'CC0 bzw. CC BY-SA 4.0', tr: 'CC0 ve CC BY-SA 4.0' },
+    license: { de: 'CC0, CC BY 3.0, CC BY-SA 4.0', tr: 'CC0, CC BY 3.0, CC BY-SA 4.0' },
+    version: '—',
+  },
+  {
+    name: 'Freesound – Türkischer Ezan',
+    url: 'https://freesound.org/people/sonically_sound/sounds/639494/',
+    usedFor: {
+      de: 'Türkischer Ezan (Makam Rast): „الأذان (Adhan/Call to Prayer)“ von sonically_sound. Gekürzt, Lautstärke angeglichen.',
+      tr: 'Türk ezanı (Rast makamı): sonically_sound tarafından "الأذان (Adhan/Call to Prayer)". Kısaltıldı, ses seviyesi eşitlendi.',
+    },
+    license: { de: 'CC0 (gemeinfrei)', tr: 'CC0 (kamu malı)' },
     version: '—',
   },
   {
