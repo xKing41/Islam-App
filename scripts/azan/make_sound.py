@@ -59,8 +59,8 @@ def pauses(wav_path, min_len=0.35):
     return out
 
 
-def render(src, dst, start, end, pre_filters, fade_out):
-    """Ausschnitt [start, end] → zweistufige Lautheitsanpassung → Ein-/Ausblenden → OGG Vorbis Mono."""
+def render(src, dst, start, end, pre_filters, fade_out, headroom=0.5):
+    """Ausschnitt [start, end] → Lautheit angleichen → Ein-/Ausblenden → OGG Vorbis Mono."""
     length = end - start
     with tempfile.TemporaryDirectory() as tmp:
         cut = os.path.join(tmp, 'cut.wav')
@@ -69,7 +69,7 @@ def render(src, dst, start, end, pre_filters, fade_out):
         # Sanft verdichten (nur Stellen deutlich über der mittleren Lautheit), dann verstärken bis zur
         # Ziel-Lautheit; verbleibende Spitzen fängt ein Begrenzer ab (0,5 dB Reserve für das Kodieren).
         thr = 10 ** ((float(m['input_i']) + 6) / 20)
-        limit = 10 ** ((TARGET_TP - 0.5) / 20)
+        limit = 10 ** ((TARGET_TP - headroom) / 20)
         gain = TARGET_I - float(m['input_i'])
 
         def dyn(g):
@@ -84,6 +84,10 @@ def render(src, dst, start, end, pre_filters, fade_out):
         chain = f'{dyn(gain)},afade=t=in:d=0.05,afade=t=out:st={max(0, length - fade_out):.3f}:d={fade_out}'
         ff('-i', cut, '-af', chain, '-ar', '44100', '-ac', '1', '-c:a', 'libvorbis', '-q:a', '3', dst)
     after = measure(dst)
+    over = float(after['input_tp']) - TARGET_TP
+    if over > 0.5 and headroom < 4:
+        # Das Kodieren hat Spitzen erzeugt – mit mehr Reserve wiederholen
+        return render(src, dst, start, end, pre_filters, fade_out, headroom + over)
     data = open(dst, 'rb').read()
     info = {
         'file': dst,
