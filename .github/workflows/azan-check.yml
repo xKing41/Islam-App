@@ -1,0 +1,85 @@
+# Sucht frei lizenzierte Azan-Aufnahmen (Wikimedia Commons, Freesound) und prüft sie:
+# Lizenz, Inhalt (Whisper large-v3 schreibt mit) und Klang (Lautheit, Dynamik, Spektrogramm).
+# Ergebnis: Release „azan-kandidaten“ mit Bericht, Spektrogrammen und verlustfreien Tonspuren (FLAC).
+name: Azan-Kandidaten prüfen
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.c.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: c
+        run: |
+          python3 scripts/azan/check.py collect > list.json
+          echo "Kandidaten: $(python3 -c 'import json; print(len(json.load(open("list.json"))))')"
+          python3 -c 'import json; [print(i["id"], "|", i["license"], "|", i["title"][:80]) for i in json.load(open("list.json"))]'
+          echo "list=$(cat list.json)" >> "$GITHUB_OUTPUT"
+
+  analyze:
+    needs: collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        item: ${{ fromJSON(needs.collect.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prüfen
+        env:
+          ITEM: ${{ toJSON(matrix.item) }}
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+          pip install --quiet faster-whisper numpy
+          python scripts/azan/check.py analyze "$ITEM" out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: azan-${{ matrix.item.id }}
+          path: out/
+          retention-days: 14
+
+  report:
+    needs: analyze
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: azan-*
+          merge-multiple: true
+          path: out
+      - name: Bericht
+        run: |
+          python3 scripts/azan/check.py report out > azan-report.md
+          cat azan-report.md
+          cat azan-report.md >> "$GITHUB_STEP_SUMMARY"
+          ls -la out
+      - name: Veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: azan-kandidaten
+          name: Azan-Kandidaten (Prüfung)
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          files: |
+            azan-report.md
+            out/*.json
+            out/*.png
+            out/*.flac
+          body: |
+            Prüfung frei lizenzierter Azan-Aufnahmen für die Gebetserinnerung der App.
+            Bericht: azan-report.md · je Aufnahme: Messwerte und Mitschrift (.json), Spektrogramm (.png), Tonspur (.flac).
