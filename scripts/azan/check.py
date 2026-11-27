@@ -238,9 +238,14 @@ def analyze(item_json, outdir):
         except Exception as e:
             print(f'{key} fehlgeschlagen: {e}', file=sys.stderr)
             item[key] = {}
-    t0 = time.time()
-    item['transcript'] = transcribe(wav16)
-    item['transcribe_s'] = round(time.time() - t0)
+    # Mitschreiben nur, wenn sich die Stimme deutlich vom Grundrauschen abhebt (sonst als Ton ungeeignet)
+    if item['dynamics'].get('range_db', 0) >= 25:
+        t0 = time.time()
+        item['transcript'] = transcribe(wav16)
+        item['transcribe_s'] = round(time.time() - t0)
+    else:
+        item['transcript'] = []
+        item['skipped'] = 'zu viel Hintergrundgeräusch (Dynamik unter 25 dB)'
     os.remove(src)
     os.remove(wav16)
     with open(base + '.json', 'w') as f:
