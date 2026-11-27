@@ -201,9 +201,14 @@ def dynamics(wav16):
 
 
 def transcribe(wav16):
+    import numpy as np
+    import wave
     from faster_whisper import WhisperModel
+    # Tonspur selbst einlesen (16 kHz Mono) – umgeht das Dekodieren über PyAV
+    w = wave.open(wav16)
+    audio = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768
     model = WhisperModel('large-v3', device='cpu', compute_type='int8', cpu_threads=os.cpu_count() or 4)
-    segs, info = model.transcribe(wav16, language='ar', beam_size=5, vad_filter=False,
+    segs, info = model.transcribe(audio, language='ar', beam_size=5, vad_filter=False,
                                   condition_on_previous_text=False, temperature=0.0)
     return [{'start': round(s.start, 1), 'end': round(s.end, 1), 'text': s.text.strip()} for s in segs]
 
