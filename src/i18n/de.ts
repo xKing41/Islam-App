@@ -381,6 +381,32 @@ export const de = {
     prayerSettings: 'Gebetszeiten & Erinnerungen',
     location: 'Standort',
   },
+  reciters: {
+    title: 'Rezitator wählen',
+    search: 'Name suchen',
+    current: 'Ausgewählt',
+    count: (n: number) => `${n} Rezitationen`,
+    noMatch: 'Kein Rezitator mit diesem Namen.',
+    play: 'Hörprobe abspielen',
+    stop: 'Hörprobe stoppen',
+    sampleHint: 'Hörprobe: Sure 112 (al-Ichlas). Alle Aufnahmen stammen von EveryAyah.com und werden beim Abspielen geladen.',
+    quality: (kbps: number) => `${kbps} kbit/s`,
+    styles: {
+      murattal: 'Murattal',
+      mujawwad: 'Mujawwad',
+      teacher: 'Lernmodus',
+    },
+    styleHints: {
+      murattal: 'Gleichmäßiges Tempo – zum Zuhören und Mitlesen.',
+      mujawwad: 'Langsam und melodisch vorgetragen.',
+      teacher: 'Zum Auswendiglernen und Nachsprechen.',
+    },
+    notes: {
+      pause: 'Pause nach jedem Vers zum Nachsprechen',
+      children: 'Kinder sprechen jeden Vers nach',
+    },
+    change: 'Wechseln',
+  },
   settings: {
     title: 'Einstellungen',
     language: 'Sprache',

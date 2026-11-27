@@ -363,6 +363,17 @@ function AudioBar({
               {reciterName}
             </AppText>
           </View>
+          <Pressable
+            onPress={() => router.push('/reciters')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`${t.audio.reciter}: ${t.reciters.change}`}
+            style={({ pressed }) => [styles.changeBtn, { borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}>
+            <Icon name="account-voice" size={18} color={theme.primary} />
+            <AppText variant="caption" color="primary" style={{ fontWeight: '600' }}>
+              {t.reciters.change}
+            </AppText>
+          </Pressable>
         </Pressable>
       ) : (
         <View style={styles.audioStart}>
@@ -416,6 +427,15 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
   },
   ayahTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  changeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+  },
   actions: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap' },
   action: {
     flexDirection: 'row',

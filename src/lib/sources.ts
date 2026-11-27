@@ -59,8 +59,8 @@ export const SOURCES: SourceInfo[] = [
     name: 'EveryAyah.com',
     url: 'https://everyayah.com',
     usedFor: {
-      de: 'Rezitationen Vers für Vers (Alafasy, Husary, Minshawi, Abdul Basit u. a.) – werden beim Abspielen geladen',
-      tr: 'Ayet ayet tilavetler (Alafasy, Husary, Minşâvî, Abdulbâsıt vb.) – dinlerken yüklenir',
+      de: '40 Rezitationen Vers für Vers (Murattal, Mujawwad, Lernmodus; Alafasy, Husary, Minshawi, Abdul Basit, Sudais, Ghamdi u. a.) – nur vollständige Aufnahmen, werden beim Abspielen geladen',
+      tr: '40 ayet ayet tilavet (Murattal, Mücevved, öğretici; Alafasy, Husary, Minşâvî, Abdulbâsıt, Sudeys, Gamidi vb.) – yalnızca eksiksiz kayıtlar, dinlerken yüklenir',
     },
     license: { de: 'Frei abrufbar für Koran-Apps', tr: "Kur'an uygulamaları için serbestçe erişilebilir" },
     version: '—',

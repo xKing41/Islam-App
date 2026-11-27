@@ -64,7 +64,18 @@ In den Einstellungen umschaltbar.
 
 Vers-für-Vers-Aufnahmen bekannter Rezitatoren werden beim Abspielen aus dem Internet geladen und nicht in der App gespeichert. URL-Schema: `https://everyayah.com/data/<Rezitator>/<SSS><AAA>.mp3`.
 
-Verfügbar: Mishary Rashid Alafasy, Mahmoud Khalil Al-Husary (auch im Lernmodus „Muallim“), Mohamed Siddiq Al-Minshawi, Abdul Basit Abdus-Samad, Abdurrahman As-Sudais, Maher Al-Muaiqly, Saud Ash-Shuraim.
+40 Rezitationen von 35 Rezitatoren, in der App nach Vortragsart gruppiert (Liste: `src/lib/quran/audio.ts`):
+
+- **Murattal** (gleichmäßiges Tempo, 35): Abdul Basit Abdus-Samad, Abdullah Awad Al-Juhany, Abdullah Basfar, Abdullah Al-Matrood, Abdurrahman As-Sudais, Abu Bakr Ash-Shatri, Ahmed ibn Ali Al-Ajamy, Ahmed Neana, Akram Al-Alaqimi, Ali Al-Hudhaify, Ali Hajjaj As-Suwaisi, Ali Jaber, Ayman Suwaid, Aziz Alili, Fares Abbad, Hani Ar-Rifai, Khalid Al-Qahtani, Khalifa Al-Tunaiji, Maher Al-Muaiqly, Mahmoud Khalil Al-Husary, Mishary Rashid Alafasy, Mohammad Al-Tablawi, Mohamed Siddiq Al-Minshawi, Muhammad Abdul-Kareem, Muhammad Ayyub, Muhammad Jibreel, Muhsin Al-Qasim, Nasser Al-Qatami, Saad Al-Ghamdi, Sahl Yassin, Salah Al-Budair, Salah Bukhatir, Saud Ash-Shuraim, Yaser Salamah, Yasser Ad-Dossari.
+- **Mujawwad** (langsam, melodisch, 3): Abdul Basit Abdus-Samad, Mahmoud Khalil Al-Husary, Mohamed Siddiq Al-Minshawi.
+- **Lernmodus** (2): Al-Husary „Muallim“ (nach jedem Vers eine gleich lange Pause zum Nachsprechen), Al-Minshawi mit Kindern, die jeden Vers nachsprechen.
+
+So wurde geprüft (November 2026):
+
+- **Vollständigkeit:** Für jeden Ordner wurde die Dateiliste des Servers gelesen und mit allen 6236 Versen verglichen; außerdem wurden Dateien unter 4 KB gesucht (abgeschnittene Aufnahmen). Aufgenommen sind nur Ordner mit allen Versen und ohne solche Dateien. Nicht aufgenommen: `Mustafa_Ismail_48kbps` (nur 2016 Verse), `ahmed_ibn_ali_al_ajamy_128kbps` (5 leere Dateien; stattdessen der vollständige Ordner `…_ketaballah.net`), `mahmoud_ali_al_banna_32kbps` (eine leere Datei), `Ibrahim_Akhdar_64kbps` (nicht vorhanden).
+- **Basmala:** Die App spielt vor Vers 1 jeder Sure (außer 1 und 9) die Datei 1:1. Mit dem Erkennungsmodell der App wurde für jeden Ordner mitgeschrieben, dass 1:1 die Basmala ist und 2:1 nur „الم“ enthält (keine doppelte Basmala).
+- **Lernmodus:** Die Tonhöhe wurde gemessen: Bei Al-Minshawi folgt jedem Vers eine Stimme eine Oktave höher (ca. 370–420 Hz, Kinder), bei Al-Husary „Muallim“ eine Pause.
+- **Hörprobe:** In der Auswahl spielt jeder Rezitator Sure 112 (al-Ichlas).
 
 ## 5. Hadithe: HadeethEnc.com
 

@@ -380,6 +380,32 @@ export const tr: Dictionary = {
     prayerSettings: 'Namaz vakitleri ve hatırlatmalar',
     location: 'Konum',
   },
+  reciters: {
+    title: 'Kâri seç',
+    search: 'İsim ara',
+    current: 'Seçili',
+    count: (n: number) => `${n} kıraat`,
+    noMatch: 'Bu isimde kâri bulunamadı.',
+    play: 'Örneği dinle',
+    stop: 'Örneği durdur',
+    sampleHint: 'Dinleme örneği: 112. sure (İhlâs). Tüm kayıtlar EveryAyah.com’dan gelir ve dinlerken yüklenir.',
+    quality: (kbps: number) => `${kbps} kbit/s`,
+    styles: {
+      murattal: 'Murattal',
+      mujawwad: 'Mücevved',
+      teacher: 'Öğretici (muallim)',
+    },
+    styleHints: {
+      murattal: 'Düzenli tempo – dinlemek ve takip ederek okumak için.',
+      mujawwad: 'Yavaş ve makamlı okuyuş.',
+      teacher: 'Ezberlemek ve tekrar ederek öğrenmek için.',
+    },
+    notes: {
+      pause: 'Her ayetten sonra tekrar için ara',
+      children: 'Çocuklar her ayeti tekrar ediyor',
+    },
+    change: 'Değiştir',
+  },
   settings: {
     title: 'Ayarlar',
     language: 'Dil',

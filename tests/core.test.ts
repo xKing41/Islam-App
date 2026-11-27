@@ -10,7 +10,7 @@ import { describe, it } from 'node:test';
 import { formatHijri, fromHijri, toHijri, upcomingIslamicDays } from '../src/lib/hijri';
 import { getCurrentAndNext, getDayTimes, isValidDay, type PrayerConfig } from '../src/lib/prayer-times';
 import { angleDiff, distanceToKaaba, qiblaBearing } from '../src/lib/qibla';
-import { buildTracks } from '../src/lib/quran/audio';
+import { buildTracks, getReciter, groupReciters, RECITERS, reciterSampleUrls } from '../src/lib/quran/audio';
 import { getSuraMeta, juzOf, NAME_LISTS, SURAS } from '../src/lib/quran/meta';
 import { normalizeArabic, splitBasmala, toArabicDigits } from '../src/lib/quran/text';
 
@@ -181,6 +181,25 @@ describe('Koran-Daten', () => {
     assert.equal(tr[1].url, 'https://everyayah.com/data/Alafasy_128kbps/002001.mp3');
     assert.equal(buildTracks('Alafasy_128kbps', 9, 1, 129).length, 129);
     assert.equal(buildTracks('Alafasy_128kbps', 2, 255, 286)[0].aya, 255);
+  });
+
+  it('Rezitatoren: eindeutige Ordner, Gruppen, Suche, Hörprobe', () => {
+    const ids = RECITERS.map((r) => r.id);
+    assert.equal(new Set(ids).size, ids.length, 'doppelter EveryAyah-Ordner');
+    // Bisherige Auswahl bleibt gültig
+    for (const old of ['Alafasy_128kbps', 'Husary_128kbps', 'Husary_Muallim_128kbps', 'Minshawy_Murattal_128kbps', 'Abdul_Basit_Murattal_192kbps',
+      'Abdurrahmaan_As-Sudais_192kbps', 'MaherAlMuaiqly128kbps', 'Saood_ash-Shuraym_128kbps']) {
+      assert.equal(getReciter(old).id, old);
+    }
+    assert.equal(getReciter('gibt-es-nicht').id, 'Alafasy_128kbps');
+    const all = groupReciters('');
+    assert.deepEqual(all.map((g) => g.style), ['murattal', 'mujawwad', 'teacher']);
+    assert.equal(all.reduce((n, g) => n + g.items.length, 0), RECITERS.length);
+    // Suche ohne Groß-/Kleinschreibung und Bindestriche
+    const husary = groupReciters('al husary');
+    assert.equal(husary.reduce((n, g) => n + g.items.length, 0), 3);
+    assert.deepEqual(groupReciters('xyz'), []);
+    assert.deepEqual(reciterSampleUrls('Alafasy_128kbps'), [1, 2, 3, 4].map((a) => `https://everyayah.com/data/Alafasy_128kbps/11200${a}.mp3`));
   });
 });
 

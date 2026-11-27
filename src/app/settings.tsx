@@ -1,9 +1,10 @@
+import { router } from 'expo-router';
 import { View } from 'react-native';
 
 import { AppText, Card, ChoiceList, ListGroup, ListRow, Screen, SectionTitle, Segmented, Stepper, SwitchRow } from '@/components/ui';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useT } from '@/i18n';
-import { RECITERS } from '@/lib/quran/audio';
+import { getReciter, RECITERS } from '@/lib/quran/audio';
 import { getSura, TRANSLATIONS } from '@/lib/quran/data';
 import { splitBasmala } from '@/lib/quran/text';
 import { type Language, type ThemeMode, type TranslationTr, useSettings } from '@/store/settings';
@@ -13,6 +14,7 @@ export default function SettingsScreen() {
   const s = useSettings();
   const preview = getSura(112);
   const previewTr = s.language === 'tr' ? s.translationTr : s.translationDe;
+  const reciter = getReciter(s.reciter);
 
   return (
     <Screen>
@@ -86,11 +88,16 @@ export default function SettingsScreen() {
       />
 
       <SectionTitle>{t.settings.reciter}</SectionTitle>
-      <ChoiceList
-        options={RECITERS.map((r) => ({ value: r.id, label: r.name, subtitle: r.style }))}
-        value={s.reciter}
-        onChange={(v) => s.set({ reciter: v })}
-      />
+      <ListGroup>
+        <ListRow
+          icon="account-voice"
+          title={reciter.name}
+          subtitle={`${t.reciters.styles[reciter.style]} · ${t.reciters.count(RECITERS.length)}`}
+          chevron
+          last
+          onPress={() => router.push('/reciters')}
+        />
+      </ListGroup>
 
       <SectionTitle>{t.settings.hijriOffset}</SectionTitle>
       <ListGroup>

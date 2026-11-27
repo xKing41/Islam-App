@@ -92,6 +92,7 @@ export default function RootLayout() {
         <Stack.Screen name="calendar" options={{ title: t.calendar.title }} />
         <Stack.Screen name="ramadan" options={{ title: t.ramadan.title }} />
         <Stack.Screen name="settings" options={{ title: t.settings.title }} />
+        <Stack.Screen name="reciters" options={{ title: t.reciters.title }} />
         <Stack.Screen name="prayer-settings" options={{ title: t.prayerSettings.title }} />
         <Stack.Screen name="location" options={{ title: t.location.title }} />
         <Stack.Screen name="sources" options={{ title: t.sources.title }} />
